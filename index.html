@@ -442,7 +442,7 @@
         <li>Other browsers save into your normal Downloads folder, with every file named <code>&lt;folder&gt;_&lt;file&gt;</code> (browsers don't let a page create subfolders there) so each batch stays grouped together.</li>
       </ul>
       <h3>Why some pages won't load</h3>
-      <p>Browsers only let a page read another site's content if that site allows it (CORS). Many sites don't. When a page can't be fetched directly, ComicSaver offers the paste-source workaround: view the page's source (<strong>Ctrl/Cmd+U</strong>), copy it, and paste it in. Image downloads can also fail for individual files on sites that block hotlinking — those are listed after the batch so you can grab them by hand.</p>
+      <p>Browsers only let a page read another site's content if that site allows it (CORS). Many sites don't. When a page can't be fetched directly, ComicSaver offers the paste-source workaround: view the page's source (<strong>Ctrl/Cmd+U</strong>), copy it, and paste it in. Previews and downloads request images <em>without</em> a referrer, which defeats the most common kind of hotlink protection; sites that insist on their own address as the referrer can't be loaded by any web page — those files land in the failed list after the batch so you can grab them by hand.</p>
     </div>
     <div class="modal-actions">
       <button type="button" class="primary small" data-close>Done</button>
@@ -673,6 +673,11 @@ function renderGrid(){
     });
     const im = document.createElement('img');
     im.className = 'thumb'; im.loading = 'lazy'; im.alt = '';
+    /* Strip the referrer: many sites block hotlinking by rejecting requests
+       whose Referer is some other site, while still serving requests with no
+       referrer at all (direct visits/bookmarks). This makes previews load on
+       a large class of such sites. */
+    im.setAttribute('referrerpolicy', 'no-referrer');
     im.addEventListener('error', () => {
       const d = document.createElement('div');
       d.className = 'thumb-failed';
@@ -763,7 +768,8 @@ function dataUriToBlob(uri){
 }
 async function fetchImageBlob(url){
   if (url.startsWith('data:')) return dataUriToBlob(url);
-  const res = await fetch(url, { mode: 'cors', credentials: 'omit' });
+  /* no-referrer here for the same anti-hotlinking reason as the thumbnails */
+  const res = await fetch(url, { mode: 'cors', credentials: 'omit', referrerPolicy: 'no-referrer' });
   if (!res.ok) throw new Error('HTTP ' + res.status);
   return await res.blob();
 }
