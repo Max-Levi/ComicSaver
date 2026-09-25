@@ -113,6 +113,14 @@
   button.primary:hover{ background: var(--gold-hover); }
   button.ghost{ background:transparent; }
   button.small{ padding:4px 9px; font-size:12px; }
+  /* ---------- extension update banner ---------- */
+  .update-banner{
+    border:1px solid var(--gold); border-radius:10px;
+    background: color-mix(in srgb, var(--gold) 14%, var(--panel));
+    padding:12px 14px;
+  }
+  .update-banner .update-actions{ display:flex; gap:8px; margin-top:10px; }
+  .update-banner .hint{ margin:8px 0 0; }
   header .actions .ghost.small{
     font-size:14px;
     padding:10px 16px;
@@ -334,6 +342,14 @@
 </header>
 
 <main>
+  <div class="update-banner" id="extUpdateBanner" hidden>
+    <div><strong>ComicSaver <span id="extUpdateVer"></span> is available</strong><span class="hint" style="display:inline"> — you're running <span id="extCurVer"></span>.</span></div>
+    <div class="update-actions">
+      <button type="button" class="primary small" id="extUpdateDownload">Download latest</button>
+      <button type="button" class="ghost small" id="extUpdateDismiss">Dismiss</button>
+    </div>
+    <p class="hint">Unzip the download over your extension folder, then open <code>chrome://extensions</code> and press the reload button on ComicSaver.</p>
+  </div>
   <section class="card" id="urlCard">
     <h2>1 · Load a page</h2>
     <p class="hint">Paste the URL of a page and ComicSaver will list every image it can find on it.</p>
@@ -383,6 +399,10 @@
     <div id="progressWrap">
       <div class="bar"><i id="progressBar"></i></div>
       <div id="progressLabel"></div>
+    </div>
+    <div class="row" id="extOpenRow" hidden style="margin-top:10px">
+      <button type="button" class="ghost small" id="btnOpenBatchFolder">Open batch folder</button>
+      <button type="button" class="ghost small" id="btnOpenDownloadsFolder">Open Downloads folder</button>
     </div>
     <div id="failedList"></div>
   </section>
@@ -534,7 +554,7 @@ document.querySelectorAll('#configPickerToggle .mode-btn').forEach(b =>
   }));
 
 /* ================= loading a page ================= */
-const state = { images: [], baseUrl: '', dirHandle: null, downloading: false };
+const state = { images: [], baseUrl: '', dirHandle: null, downloading: false, lastBatchIds: [] };
 
 function normalizeUrl(raw){
   raw = (raw || '').trim();
@@ -918,16 +938,18 @@ async function downloadBatchExtension(kept, folder, folderBase){
   $('progressWrap').style.display = 'block';
   $('failedList').style.display = 'none';
   $('failedList').innerHTML = '';
+  $('extOpenRow').hidden = true;
 
   const safeFolder = folder.replace(/[\\/:*?"<>|]/g, '_').trim() || 'batch';
   const taken = new Set();
   const failed = [];
+  const completedIds = [];
   const pending = new Map(); /* downloadId -> { url, name } */
   const onChanged = (delta) => {
     if (!pending.has(delta.id)) return;
     const rec = pending.get(delta.id);
     const st = delta.state && delta.state.current;
-    if (st === 'complete') pending.delete(delta.id);
+    if (st === 'complete'){ pending.delete(delta.id); completedIds.push(delta.id); }
     else if (st === 'interrupted'){
       pending.delete(delta.id);
       failed.push({ url: rec.url, name: rec.name });
@@ -976,6 +998,14 @@ async function downloadBatchExtension(kept, folder, folderBase){
   renderFailedList(failed);
   resetDownloadUI();
   const okCount = kept.length - failed.length;
+  /* Offer folder shortcuts when at least one file landed: "batch folder"
+     reveals the new subfolder in the file manager, "Downloads folder" opens
+     its parent. (Only an extension can do this — web pages are forbidden
+     from opening the file manager.) */
+  if (okCount > 0 && completedIds.length){
+    state.lastBatchIds = completedIds;
+    $('extOpenRow').hidden = false;
+  }
   toast(failed.length
     ? `Saved ${okCount} of ${kept.length} into “${safeFolder}” in your Downloads folder. ${failed.length} failed — see the list below.`
     : `Saved ${kept.length} image${kept.length === 1 ? '' : 's'} into “${safeFolder}” in your Downloads folder.`,
@@ -1006,6 +1036,45 @@ function ingestExtension(payload){
     ? `Found ${uniq.length} image${uniq.length === 1 ? '' : 's'} — all selected.`
     : 'No images found on that page.', !uniq.length);
 }
+/* ================= extension self-update check ================= */
+/* Unpacked extensions don't auto-update, so the app page checks a version
+   file on the (unlisted) ComicSaver site each time it opens. GitHub Pages
+   sends Access-Control-Allow-Origin: *, so no extra permission is needed. */
+const EXT_UPDATE_URL = 'https://max-levi.github.io/ComicSaver/ext-version.json';
+function cmpVersions(a, b){
+  const pa = String(a).split('.').map(x => parseInt(x, 10) || 0);
+  const pb = String(b).split('.').map(x => parseInt(x, 10) || 0);
+  for (let i = 0; i < Math.max(pa.length, pb.length); i++){
+    const d = (pa[i] || 0) - (pb[i] || 0);
+    if (d) return d > 0 ? 1 : -1;
+  }
+  return 0;
+}
+async function checkExtensionUpdate(){
+  let cur = '';
+  try{ cur = chrome.runtime.getManifest().version; }catch(e){ return; }
+  let info = null;
+  try{
+    const res = await fetch(EXT_UPDATE_URL, { cache: 'no-store' });
+    if (!res.ok) return;
+    info = await res.json();
+  }catch(e){ return; } /* offline or unreachable: stay silent */
+  const latest = info && info.version;
+  if (!latest || cmpVersions(latest, cur) <= 0) return;
+  if (localStorage.getItem('comicsaver-ext-update-dismissed') === latest) return;
+  $('extCurVer').textContent = cur;
+  $('extUpdateVer').textContent = latest;
+  $('extUpdateDownload').onclick = () =>
+    window.open(info.download ||
+      ('https://max-levi.github.io/ComicSaver/comicsaver-extension-' + latest + '.zip'),
+      '_blank', 'noopener');
+  $('extUpdateBanner').hidden = false;
+}
+$('extUpdateDismiss').addEventListener('click', () => {
+  const v = $('extUpdateVer').textContent;
+  if (v) localStorage.setItem('comicsaver-ext-update-dismissed', v);
+  $('extUpdateBanner').hidden = true;
+});
 async function bootExtension(){
   $('urlCard').hidden = true;
   $('pastePanel').hidden = true;
@@ -1022,19 +1091,36 @@ async function bootExtension(){
       escapeHtml((payload && payload.error) ||
         'Nothing to show. Click the ComicSaver icon while viewing a page to scrape its images.') +
       '</div>';
+    checkExtensionUpdate(); /* fire and forget: silent when offline */
     return;
   }
   const src = $('extSource');
   src.textContent = payload.pageTitle || payload.pageUrl || 'the page';
   if (payload.pageUrl) src.href = payload.pageUrl;
   ingestExtension(payload);
+  checkExtensionUpdate(); /* fire and forget: silent when offline */
 }
 
 /* ================= init ================= */
 applyTheme(localStorage.getItem(LS.theme) || 'dark');
 syncPickerButtons();
 updateWillSaveTo();
-if (IS_EXTENSION) bootExtension();
+if (IS_EXTENSION){
+  /* Folder shortcuts: chrome.downloads.show(id) reveals the batch subfolder
+     in the file manager with the file highlighted; showDefaultFolder() opens
+     the Downloads folder it lives in. */
+  $('btnOpenBatchFolder').addEventListener('click', () => {
+    const ids = state.lastBatchIds || [];
+    if (!ids.length) return;
+    try{ chrome.downloads.show(ids[0]); }
+    catch(e){ toast('Could not open the folder.', true); }
+  });
+  $('btnOpenDownloadsFolder').addEventListener('click', () => {
+    try{ chrome.downloads.showDefaultFolder(); }
+    catch(e){ toast('Could not open the Downloads folder.', true); }
+  });
+  bootExtension();
+}
 </script>
 </body>
 </html>
