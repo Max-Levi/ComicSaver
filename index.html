@@ -21,7 +21,7 @@
     --gold-tint-strong: #3a3320;
     --text: #ede9e1;
     --text-muted: #9c9890;
-    --placeholder: #6b6864;
+    --placeholder: #7d7a76;
     --border: #38383d;
     --hover-bg: #2d2d33;
     --hover-border: #55555c;
@@ -43,7 +43,7 @@
     --gold-tint-strong: #ecdfb3;
     --text: #29271f;
     --text-muted: #746f62;
-    --placeholder: #aca690;
+    --placeholder: #8a8474;
     --border: #e1ddd0;
     --hover-bg: #efece2;
     --hover-border: #c9c3b2;
@@ -87,7 +87,7 @@
     display:inline-flex; align-items:center; flex-shrink:0;
     font-size:15px; font-weight:800; letter-spacing:2px;
     color:#fff; background:#c0392b;
-    border-radius:8px; padding:5px 12px 5px 14px;
+    border-radius:10px; padding:5px 12px 5px 14px;
     box-shadow:0 0 0 2px rgba(192,57,43,.35);
   }
   .actions{ display:flex; gap:8px; flex-shrink:0; }
@@ -102,9 +102,11 @@
     padding:7px 13px;
     border-radius:6px;
     cursor:pointer;
-    transition: border-color .15s ease, background .15s ease;
+    transition: border-color .15s ease, background .15s ease, transform .08s ease;
   }
   button:hover{ border-color: var(--hover-border); background: var(--hover-bg); }
+  button:active{ transform: translateY(1px); }
+  button:focus-visible{ outline:2px solid var(--gold); outline-offset:2px; }
   button:disabled{ opacity:.45; cursor:not-allowed; }
   button.primary{
     background: var(--gold);
@@ -150,11 +152,41 @@
   .card{
     background: var(--panel);
     border:1px solid var(--border);
-    border-radius:12px;
+    border-radius:10px;
     padding:18px 20px;
   }
   .card h2{ margin:0 0 4px; font-size:15px; }
   .card p.hint{ margin:0 0 12px; font-size:12.5px; color:var(--text-muted); line-height:1.5; }
+
+  /* ---------- landing: step 1 + ghost steps, vertically centered ---------- */
+  .landing{
+    margin:auto;               /* absorbs free space -> vertical centering when short */
+    width:100%; max-width:640px;
+    display:flex; flex-direction:column; gap:14px;
+    position:relative;
+  }
+  .watermark{
+    position:absolute; top:46%; left:50%;
+    width:300px; height:auto;
+    transform:translate(-50%,-50%);
+    color:var(--text-muted); opacity:.055;
+    pointer-events:none;
+  }
+  .ghost-step{
+    border-style:dashed;
+    opacity:.6;
+    pointer-events:none;
+    user-select:none;
+  }
+  .ghost-step h2{ color:var(--text-muted); }
+  .landing-foot{
+    margin:2px 0 0; text-align:center;
+    font-size:12.5px; color:var(--text-muted);
+  }
+  .empty-art{
+    display:block; width:54px; height:auto;
+    margin:0 auto 12px; color:var(--text-muted); opacity:.75;
+  }
 
   /* ---------- url bar ---------- */
   .url-row{ display:flex; gap:10px; }
@@ -183,7 +215,7 @@
   .tile{
     position:relative;
     border:1px solid var(--border);
-    border-radius:8px;
+    border-radius:10px;
     overflow:hidden;
     background: var(--panel);
     cursor:pointer;
@@ -215,7 +247,7 @@
   }
   .empty-note{
     text-align:center; color:var(--text-muted); font-size:13px;
-    padding:34px 16px; border:1px dashed var(--border); border-radius:12px;
+    padding:34px 16px; border:1px dashed var(--border); border-radius:10px;
     line-height:1.6;
   }
   .spinner-row{ display:flex; align-items:center; justify-content:center; gap:10px; padding:30px; color:var(--text-muted); font-size:13px; }
@@ -235,7 +267,7 @@
   #willSaveTo strong{ color:var(--gold); font-family:'JetBrains Mono', monospace; font-weight:500; }
   #progressWrap{ margin-top:12px; display:none; }
   #progressWrap .bar{
-    height:8px; border-radius:4px; background: var(--panel-2);
+    height:8px; border-radius:6px; background: var(--panel-2);
     border:1px solid var(--border); overflow:hidden;
   }
   #progressWrap .bar i{
@@ -254,7 +286,7 @@
   }
   .modal-overlay.open{ display:flex; }
   .modal{
-    background: var(--panel); border:1px solid var(--border); border-radius:12px;
+    background: var(--panel); border:1px solid var(--border); border-radius:10px;
     padding: 24px 26px; width: 380px; max-width:90vw;
     max-height: 88vh; overflow-y:auto;
     box-shadow: 0 20px 50px rgba(0,0,0,.5);
@@ -297,7 +329,7 @@
   }
   .help-nav a{
     font-size:12.5px; color:var(--text-muted); text-decoration:none;
-    padding:5px 8px; border-radius:5px; white-space:nowrap;
+    padding:5px 8px; border-radius:6px; white-space:nowrap;
   }
   .help-nav a:hover{ background:var(--hover-bg); color:var(--text); }
   .help-content section{ scroll-margin-top:6px; }
@@ -319,7 +351,7 @@
   .help-content code{
     font-family:'JetBrains Mono', monospace; font-size:12px;
     background:var(--panel-2); border:1px solid var(--border);
-    border-radius:4px; padding:1px 5px; color:var(--text);
+    border-radius:6px; padding:1px 5px; color:var(--text);
   }
 
   /* ---------- toasts (reused from SetBook) ---------- */
@@ -328,7 +360,7 @@
     display:flex; flex-direction:column; gap:8px; max-width:320px;
   }
   .toast{
-    background: var(--panel-2); border:1px solid var(--border); border-radius:8px;
+    background: var(--panel-2); border:1px solid var(--border); border-radius:10px;
     padding:11px 13px; font-size:13px; color: var(--text); line-height:1.4;
     display:flex; align-items:center; gap:10px;
     box-shadow: 0 10px 28px rgba(0,0,0,.45);
@@ -342,7 +374,7 @@
     .brand small{ display:none; }
     main{ padding:14px 12px 24px; }
     .url-row{ flex-direction:column; }
-    .url-row button{ width:100%; }
+    .url-row button{ width:100%; min-height:44px; }
     #grid{ grid-template-columns:repeat(auto-fill, minmax(110px, 1fr)); gap:10px; }
     .tile .thumb, .tile .thumb-failed{ height:110px; }
     .save-grid{ flex-direction:column; align-items:stretch; }
@@ -373,14 +405,26 @@
       <button type="button" class="ghost small" id="extUpdateDismiss">Dismiss</button>
     </div>
   </div>
-  <section class="card" id="urlCard">
-    <h2>1 · Load a page</h2>
-    <p class="hint">Paste the URL of a page and ComicSaver will list every image it can find on it.</p>
-    <div class="url-row">
-      <input id="urlInput" class="modal-input" type="url" inputmode="url" placeholder="https://example.com/comic/chapter-1" aria-label="Page URL">
-      <button type="button" class="primary" id="btnLoad">Load images</button>
-    </div>
-  </section>
+  <div class="landing" id="landing">
+    <svg class="watermark" viewBox="0 0 44 36" aria-hidden="true"><rect x="4.5" y="4.5" width="35" height="27" rx="4" fill="none" stroke="currentColor" stroke-width="3.6"/><circle cx="15" cy="13.5" r="3.4" fill="currentColor"/><path d="M9 27.5 L19 16.5 L26 23.5 L31 18.5 L37.5 26" fill="none" stroke="currentColor" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    <section class="card" id="urlCard">
+      <h2>1 · Load a page</h2>
+      <p class="hint">Paste the URL of a page and ComicSaver will list every image it can find on it.</p>
+      <div class="url-row">
+        <input id="urlInput" class="modal-input" type="url" inputmode="url" placeholder="https://example.com/comic/chapter-1" aria-label="Page URL">
+        <button type="button" class="primary" id="btnLoad">Load images</button>
+      </div>
+    </section>
+    <section class="card ghost-step" id="selectGhost" aria-hidden="true">
+      <h2>2 · Review images</h2>
+      <p class="hint">Thumbnails land here — keep the ones you want, drop the rest.</p>
+    </section>
+    <section class="card ghost-step" id="saveGhost" aria-hidden="true">
+      <h2>3 · Save your batch</h2>
+      <p class="hint">Name the folder, then download everything you kept.</p>
+    </section>
+    <p class="landing-foot">Files never leave your browser.</p>
+  </div>
 
   <section class="card" id="extBanner" hidden>
     <h2>1 · Page scraped</h2>
@@ -482,7 +526,7 @@
         <section id="docs-overview">
           <h3>1. Overview</h3>
           <p>ComicSaver is a single-file, client-side web application for bulk-saving the images from a page — built for downloading manga/comic chapters a page at a time. Paste a page URL, review the images as thumbnails, drop the ones you don't want, then download the rest.</p>
-          <p>The entire application — markup, styles, and logic — is contained in one HTML file. There is no build step for the web version, no backend, no account system, and no database. A companion Chrome extension scrapes the open tab directly and saves through the downloads API.</p>
+          <p>The entire application — markup, styles, and logic — is contained in one HTML file. There is no build step for the web version, no backend, no account system, and no database. A companion Chrome extension scrapes the open tab directly and saves through the downloads API. Nothing is ever uploaded: a footer line states that files never leave the browser.</p>
         </section>
         <section id="docs-architecture">
           <h3>2. Architecture</h3>
@@ -491,6 +535,7 @@
             <li>Two compile-time flags select the build variant from the same source: <code>IS_QA</code> (QA site: red badge, “ — QA” title, “ QA” stamped into names) and <code>IS_EXTENSION</code> (Chrome extension app page).</li>
             <li>Appearance is controlled by a <code>data-theme</code> attribute on the <code>&lt;html&gt;</code> element (dark default, light follows the device), persisted per device.</li>
             <li>The header brand is a hand-drawn inline SVG: an image-frame mark (frame, sun, mountain) beside the <code>ComicSaver</code> wordmark in theme-aware <code>--brand-green</code> (mint on dark, deep green on light), matching the SetBook logo's style. No external image assets.</li>
+            <li>The first screen is a centered landing: the URL bar sits beside a faint oversized watermark (reusing the image-frame logo paths) with ghost previews of the next two steps — “2 · Review images” and “3 · Save your batch” — rendered non-interactive and dimmed until real steps replace them. The ghost steps are hidden in the extension build, which starts at image review.</li>
             <li>Thumbnails and downloads request images with <code>referrerpolicy="no-referrer"</code> / <code>referrerPolicy: 'no-referrer'</code>, which defeats the most common kind of hotlink protection (servers that 403 on a foreign <code>Referer</code> but allow a missing one).</li>
           </ul>
         </section>
@@ -555,7 +600,8 @@
             <li>GitHub Pages sites (public, unlisted via <code>noindex</code> + <code>robots.txt</code> disallow-all): production <code>Max-Levi/ComicSaver</code> and QA <code>Max-Levi/ComicSaver-QA</code>. GitHub free can't serve Pages from a private repo, hence public-but-unlisted.</li>
             <li>Deploy scripts mirror the SetBook workflow: <code>comicsaver_deploy.py</code> (prod), <code>comicsaver_qa_deploy.py</code> (flips <code>IS_QA</code>, injects noindex). Extension: <code>comicsaver_ext_build.py</code> (flips <code>IS_EXTENSION</code>, externalizes the script, zips <code>dist/</code>) and <code>comicsaver_ext_publish.py</code> (builds, then pushes the zip + <code>ext-version.json</code> to the prod Pages site).</li>
             <li>Only large features go to QA first; small fixes go straight to production. When unsure, ask.</li>
-            <li>Per standing rule: after any app update, offer to update this documentation — it never changes without approval.</li>
+            <li>Per standing rule: this documentation is updated with every app update — no separate approval needed.</li>
+            <li>Design tokens are disciplined: gold is reserved for the brand accents and active states, never for general labels; radii follow a three-step scale (<code>6px</code> controls, <code>10px</code> surfaces, <code>999px</code> pills); pressable controls translate 1px on press and show a gold <code>:focus-visible</code> ring; input placeholders hold ≥4.5:1 contrast in both themes; empty/no-image states show a small line-art image-frame illustration.</li>
           </ul>
         </section>
         <section id="docs-qa">
@@ -707,6 +753,8 @@ function normalizeUrl(raw){
 function setLoading(on){
   $('selectCard').hidden = false;
   $('saveCard').hidden = true;
+  $('selectGhost').hidden = true;
+  $('saveGhost').hidden = false;
   $('selCount').textContent = '';
   $('grid').innerHTML = on
     ? '<div class="spinner-row"><div class="spinner"></div>Loading images…</div>'
@@ -727,6 +775,8 @@ async function loadFromUrl(){
   }catch(err){
     setLoading(false);
     $('selectCard').hidden = true;
+    $('selectGhost').hidden = false;
+    $('saveGhost').hidden = true;
     $('pastePanel').hidden = false;
     $('pasteHtml').value = '';
     toast('That page blocks direct reading (CORS). Paste its source below instead.', true);
@@ -815,6 +865,8 @@ function ingest(html, base){
   $('pastePanel').hidden = true;
   $('selectCard').hidden = false;
   $('saveCard').hidden = false;
+  $('selectGhost').hidden = true;
+  $('saveGhost').hidden = true;
   renderGrid();
   updateCount();
   updateWillSaveTo();
@@ -823,13 +875,17 @@ function ingest(html, base){
     ? `Found ${urls.length} image${urls.length === 1 ? '' : 's'} — all selected.`
     : 'No images found on that page.', !urls.length);
 }
+/* Hand-drawn line-art mark for empty states (echoes the header logo). */
+const EMPTY_ART = '<svg class="empty-art" viewBox="0 0 44 36" aria-hidden="true"><rect x="4.5" y="4.5" width="35" height="27" rx="4" fill="none" stroke="currentColor" stroke-width="3.6"/><circle cx="15" cy="13.5" r="3.4" fill="currentColor"/><path d="M9 27.5 L19 16.5 L26 23.5 L31 18.5 L37.5 26" fill="none" stroke="currentColor" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 function renderGrid(){
   const grid = $('grid');
   grid.innerHTML = '';
   if (!state.images.length){
-    grid.innerHTML = IS_EXTENSION
-      ? '<div class="empty-note">No images found. Try the icon on another page.</div>'
-      : '<div class="empty-note">No images found. Try another page — or paste the page source if the site blocks direct fetching.</div>';
+    grid.innerHTML = '<div class="empty-note">' + EMPTY_ART +
+      (IS_EXTENSION
+        ? 'No images found. Try the icon on another page.'
+        : 'No images found. Try another page — or paste the page source if the site blocks direct fetching.') +
+      '</div>';
     return;
   }
   for (const img of state.images){
@@ -1267,6 +1323,8 @@ function ingestExtension(payload){
   state.baseUrl = payload.pageUrl || '';
   $('selectCard').hidden = false;
   $('saveCard').hidden = false;
+  $('selectGhost').hidden = true;
+  $('saveGhost').hidden = true;
   renderGrid();
   updateCount();
   updateWillSaveTo();
@@ -1322,6 +1380,8 @@ $('extUpdateDismiss').addEventListener('click', () => {
 async function bootExtension(){
   $('urlCard').hidden = true;
   $('pastePanel').hidden = true;
+  $('selectGhost').hidden = true;
+  $('saveGhost').hidden = true;
   $('extBanner').hidden = false;
   let payload = null;
   try{
@@ -1329,7 +1389,7 @@ async function bootExtension(){
   }catch(e){ payload = null; }
   if (!payload || payload.error){
     $('selectCard').hidden = false;
-    $('grid').innerHTML = '<div class="empty-note">' +
+    $('grid').innerHTML = '<div class="empty-note">' + EMPTY_ART +
       escapeHtml((payload && payload.error) ||
         'Nothing to show. Click the ComicSaver icon while viewing a page to scrape its images.') +
       '</div>';
