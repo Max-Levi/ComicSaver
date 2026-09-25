@@ -507,6 +507,7 @@
             <li><strong>Website:</strong> the pasted page is fetched and parsed with <code>DOMParser</code>. The extractor collects <code>&lt;img&gt;</code> <code>src</code> (falling back through <code>data-src</code> and other lazy-load attributes), the largest candidate of each <code>srcset</code>/<code>data-srcset</code>, the largest <code>&lt;source&gt;</code> inside <code>&lt;picture&gt;</code>, and — when “Collect linked images” is enabled — <code>&lt;a&gt;</code> links whose <code>href</code> points at an image file.</li>
             <li><strong>CORS:</strong> browsers only let a page read another site's content if that site allows it. When a page can't be fetched directly, ComicSaver offers a paste-page-source fallback (view source, copy, paste).</li>
             <li><strong>Extension:</strong> a content script runs the same extractor rules against the live tab's DOM, so there is no fetch and no CORS involved; the payload travels to the app page via <code>chrome.storage.session</code>.</li>
+            <li><strong>Security:</strong> every candidate URL is resolved against the page's base URL first, and only <code>http(s)</code> (plus <code>data:</code> images) survive — <code>javascript:</code> URLs are rejected, including obfuscated ones with embedded tabs or newlines, which browsers silently strip during URL parsing. The failed-downloads list only links <code>http(s)</code> and <code>data:image</code> URLs; anything else renders as inert text.</li>
             <li>Duplicates are removed; the surviving images keep page order.</li>
           </ul>
         </section>
@@ -568,8 +569,8 @@
         <section id="docs-qa">
           <h3>10. QA regression checklist</h3>
           <ul>
-            <li><code>comicsaver-test.js</code> — website suite (extraction, selection, folder naming/increment, web saving paths, settings, help): <strong>28 checks</strong>, all green.</li>
-            <li><code>ext-test.js</code> — extension suite: extractor fixture (8), app page with stubbed <code>chrome.*</code> (sequential naming, sanitization, extension copy, docs modal, rename-override detection), self-update check incl. the step-by-step update guide (14). Run with <code>NODE_PATH=~/workspace/setbook-qa/node_modules node ext-test.js</code>.</li>
+            <li><code>comicsaver-test.js</code> — website suite (extraction, selection, folder naming/increment, web saving paths, settings, help, URL-scheme security): <strong>31 checks</strong>, all green.</li>
+            <li><code>ext-test.js</code> — extension suite: <strong>53 checks</strong>, all green — extractor fixture (incl. obfuscated <code>javascript:</code> rejection), app page with stubbed <code>chrome.*</code> (sequential naming, sanitization, extension copy, docs modal, rename-override detection), self-update check incl. the step-by-step update guide. Run with <code>NODE_PATH=~/workspace/setbook-qa/node_modules node ext-test.js</code>.</li>
             <li>Release flow: bump <code>manifest.json</code> version → build → QA green → publish → verify live <code>ext-version.json</code> reports the new version and the zip downloads byte-identical.</li>
           </ul>
         </section>
@@ -786,9 +787,12 @@ function extractImages(html, base){
   const push = (u) => {
     if (!u) return;
     u = u.trim();
-    if (!u || u.startsWith('#') || /^javascript:/i.test(u)) return;
+    if (!u || u.startsWith('#')) return;
     let abs;
     try{ abs = new URL(u, base).href; }catch(e){ return; }
+    /* Check the scheme AFTER resolution: the URL parser strips tabs/newlines,
+       so "java\tscript:…" would otherwise resolve to a javascript: URL. */
+    if (/^javascript:/i.test(abs)) return;
     if (abs.startsWith('data:') && !abs.startsWith('data:image/')) return;
     if (seen.has(abs)) return;
     seen.add(abs);
@@ -1036,10 +1040,16 @@ function renderFailedList(failed){
   const ul = document.createElement('ul');
   for (const f of failed){
     const li = document.createElement('li');
-    const a = document.createElement('a');
-    a.href = f.url; a.target = '_blank'; a.rel = 'noopener';
-    a.textContent = f.name;
-    li.appendChild(a);
+    /* Only http(s) and image data: URLs become clickable links — anything
+       else (e.g. a smuggled javascript: URL) is shown as inert text. */
+    if (/^https?:\/\//i.test(f.url) || /^data:image\//i.test(f.url)){
+      const a = document.createElement('a');
+      a.href = f.url; a.target = '_blank'; a.rel = 'noopener';
+      a.textContent = f.name;
+      li.appendChild(a);
+    }else{
+      li.textContent = f.name + ' (blocked: not a web address)';
+    }
     ul.appendChild(li);
   }
   fl.append(p, ul);
