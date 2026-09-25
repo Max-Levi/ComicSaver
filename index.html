@@ -343,6 +343,11 @@
     </div>
   </section>
 
+  <section class="card" id="extBanner" hidden>
+    <h2>1 · Page scraped</h2>
+    <p class="hint">The images below were read directly from the tab you were viewing: <a id="extSource" href="#" target="_blank" rel="noopener"></a></p>
+  </section>
+
   <section class="card" id="pastePanel" hidden>
     <h2>Couldn't fetch that page directly</h2>
     <p class="hint">Some sites block other pages from reading them (CORS). As a workaround: open the page in your browser, press <strong>Ctrl/Cmd+U</strong> to view its source, copy it, and paste it below. ComicSaver will extract the images from the pasted HTML.</p>
@@ -406,7 +411,7 @@
       </span>
       <input type="checkbox" class="config-check" id="configLinked" aria-label="Collect linked images">
     </label>
-    <div class="config-row">
+    <div class="config-row" id="pickerRow">
       <div class="config-text">
         <div class="config-name">Ask where to save, every time</div>
         <div class="config-desc">When supported, show the folder picker on every download instead of reusing the folder you picked before. Saved on this device.</div>
@@ -442,7 +447,7 @@
         <li>Other browsers save into your normal Downloads folder, with every file named <code>&lt;folder&gt;_&lt;file&gt;</code> (browsers don't let a page create subfolders there) so each batch stays grouped together.</li>
       </ul>
       <h3>Why some pages won't load</h3>
-      <p>Browsers only let a page read another site's content if that site allows it (CORS). Many sites don't. When a page can't be fetched directly, ComicSaver offers the paste-source workaround: view the page's source (<strong>Ctrl/Cmd+U</strong>), copy it, and paste it in. Previews and downloads request images <em>without</em> a referrer, which defeats the most common kind of hotlink protection; sites that insist on their own address as the referrer can't be loaded by any web page — those files land in the failed list after the batch so you can grab them by hand.</p>
+      <p>Browsers only let a page read another site's content if that site allows it (CORS). Many sites don't. When a page can't be fetched directly, ComicSaver offers the paste-source workaround: view the page's source (<strong>Ctrl/Cmd+U</strong>), copy it, and paste it in. Previews and downloads request images <em>without</em> a referrer, which defeats the most common kind of hotlink protection; sites that insist on their own address as the referrer can't be loaded by any web page — those files land in the failed list after the batch so you can grab them by hand. There is also a <strong>ComicSaver Chrome extension</strong> that reads the open tab directly, so the URL step and the paste workaround go away entirely — and its downloads land in real subfolders.</p>
     </div>
     <div class="modal-actions">
       <button type="button" class="primary small" data-close>Done</button>
@@ -456,6 +461,8 @@
 "use strict";
 /* Build flag: flipped to true by the QA deploy script for the QA site. */
 const IS_QA = false;
+/* Build flag: flipped to true by the extension build script for the Chrome extension. */
+const IS_EXTENSION = false;
 
 /* ================= helpers ================= */
 const $ = (id) => document.getElementById(id);
@@ -655,7 +662,9 @@ function renderGrid(){
   const grid = $('grid');
   grid.innerHTML = '';
   if (!state.images.length){
-    grid.innerHTML = '<div class="empty-note">No images found. Try another page — or paste the page source if the site blocks direct fetching.</div>';
+    grid.innerHTML = IS_EXTENSION
+      ? '<div class="empty-note">No images found. Try the icon on another page.</div>'
+      : '<div class="empty-note">No images found. Try another page — or paste the page source if the site blocks direct fetching.</div>';
     return;
   }
   for (const img of state.images){
@@ -802,6 +811,25 @@ function resetDownloadUI(){
   }, 600);
   updateWillSaveTo();
 }
+function renderFailedList(failed){
+  const fl = $('failedList');
+  fl.style.display = 'none';
+  fl.innerHTML = '';
+  if (!failed.length) return;
+  fl.style.display = 'block';
+  const p = document.createElement('div');
+  p.innerHTML = `<strong style="color:var(--text)">${failed.length} file${failed.length === 1 ? '' : 's'} couldn't be downloaded</strong> (the site likely blocks cross-origin reads — open each link to save it by hand):`;
+  const ul = document.createElement('ul');
+  for (const f of failed){
+    const li = document.createElement('li');
+    const a = document.createElement('a');
+    a.href = f.url; a.target = '_blank'; a.rel = 'noopener';
+    a.textContent = f.name;
+    li.appendChild(a);
+    ul.appendChild(li);
+  }
+  fl.append(p, ul);
+}
 async function downloadBatch(){
   if (state.downloading) return;
   const kept = state.images.filter(i => i.kept);
@@ -811,6 +839,7 @@ async function downloadBatch(){
      change while the batch is downloading, and the stored name must be the
      one this batch actually used. */
   const folderBase = $('folderInput').value.trim() || suggestFolderName();
+  if (IS_EXTENSION){ await downloadBatchExtension(kept, folder, folderBase); return; }
   state.downloading = true;
   $('btnDownload').disabled = true;
   $('progressWrap').style.display = 'block';
@@ -869,22 +898,7 @@ async function downloadBatch(){
   localStorage.setItem(LS.lastFolder, folderBase);
   $('folderInput').value = '';
 
-  if (failed.length){
-    const fl = $('failedList');
-    fl.style.display = 'block';
-    const p = document.createElement('div');
-    p.innerHTML = `<strong style="color:var(--text)">${failed.length} file${failed.length === 1 ? '' : 's'} couldn't be downloaded</strong> (the site likely blocks cross-origin reads — open each link to save it by hand):`;
-    const ul = document.createElement('ul');
-    for (const f of failed){
-      const li = document.createElement('li');
-      const a = document.createElement('a');
-      a.href = f.url; a.target = '_blank'; a.rel = 'noopener';
-      a.textContent = f.name;
-      li.appendChild(a);
-      ul.appendChild(li);
-    }
-    fl.append(p, ul);
-  }
+  renderFailedList(failed);
   resetDownloadUI();
   const where = useFs ? `into “${folder}”` : `into your Downloads folder as “${folder}_…” files`;
   let msg = `Saved ${saved} image${saved === 1 ? '' : 's'} ${where}.`;
@@ -894,10 +908,133 @@ async function downloadBatch(){
 }
 $('btnDownload').addEventListener('click', downloadBatch);
 
+/* ================= extension download path ================= */
+/* The Chrome extension saves through chrome.downloads, which CAN create real
+   subfolders (unlike anchor downloads) — every batch lands in
+   Downloads/<folder>/. */
+async function downloadBatchExtension(kept, folder, folderBase){
+  state.downloading = true;
+  $('btnDownload').disabled = true;
+  $('progressWrap').style.display = 'block';
+  $('failedList').style.display = 'none';
+  $('failedList').innerHTML = '';
+
+  const safeFolder = folder.replace(/[\\/:*?"<>|]/g, '_').trim() || 'batch';
+  const taken = new Set();
+  const failed = [];
+  const pending = new Map(); /* downloadId -> { url, name } */
+  const onChanged = (delta) => {
+    if (!pending.has(delta.id)) return;
+    const rec = pending.get(delta.id);
+    const st = delta.state && delta.state.current;
+    if (st === 'complete') pending.delete(delta.id);
+    else if (st === 'interrupted'){
+      pending.delete(delta.id);
+      failed.push({ url: rec.url, name: rec.name });
+    }
+  };
+  chrome.downloads.onChanged.addListener(onChanged);
+  try{
+    for (let k = 0; k < kept.length; k++){
+      const img = kept[k];
+      const fname = fileNameFor(img.url, k, taken);
+      $('progressLabel').textContent = `Saving ${k + 1} of ${kept.length} — ${fname}`;
+      try{
+        const id = await chrome.downloads.download({
+          url: img.url,
+          filename: safeFolder + '/' + fname,
+          conflictAction: 'uniquify',
+          saveAs: false
+        });
+        pending.set(id, { url: img.url, name: fname });
+      }catch(e){
+        failed.push({ url: img.url, name: fname });
+      }
+      $('progressBar').style.width = Math.round(((k + 1) / kept.length) * 100) + '%';
+      await sleep(150);
+    }
+    /* Wait for the downloads to settle; anything still hanging after two
+       minutes (or reported interrupted) goes on the failed list. */
+    const deadline = Date.now() + 120000;
+    while (pending.size && Date.now() < deadline) await sleep(500);
+    for (const [id, rec] of [...pending]){
+      let interrupted = true;
+      try{
+        const found = await chrome.downloads.search({ id });
+        if (found && found[0] && found[0].state === 'complete') interrupted = false;
+      }catch(e){ /* treat as failed */ }
+      if (interrupted) failed.push({ url: rec.url, name: rec.name });
+      pending.delete(id);
+    }
+  }finally{
+    chrome.downloads.onChanged.removeListener(onChanged);
+  }
+
+  localStorage.setItem(LS.lastFolder, folderBase);
+  $('folderInput').value = '';
+
+  renderFailedList(failed);
+  resetDownloadUI();
+  const okCount = kept.length - failed.length;
+  toast(failed.length
+    ? `Saved ${okCount} of ${kept.length} into “${safeFolder}” in your Downloads folder. ${failed.length} failed — see the list below.`
+    : `Saved ${kept.length} image${kept.length === 1 ? '' : 's'} into “${safeFolder}” in your Downloads folder.`,
+    failed.length > 0);
+}
+
+/* ================= extension boot ================= */
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g, c =>
+    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+/* In the extension the images were already scraped from the live tab by the
+   content script — no URL fetching or CORS involved. The payload waits in
+   chrome.storage.session, put there by the background worker. */
+function ingestExtension(payload){
+  const urls = [...(payload.images || [])];
+  if (localStorage.getItem(LS.linked) === '1') urls.push(...(payload.linkedImages || []));
+  const seen = new Set(), uniq = [];
+  for (const u of urls){ if (u && !seen.has(u)){ seen.add(u); uniq.push(u); } }
+  state.images = uniq.map((url, i) => ({ url, kept: true, id: i }));
+  state.baseUrl = payload.pageUrl || '';
+  $('selectCard').hidden = false;
+  $('saveCard').hidden = false;
+  renderGrid();
+  updateCount();
+  updateWillSaveTo();
+  toast(uniq.length
+    ? `Found ${uniq.length} image${uniq.length === 1 ? '' : 's'} — all selected.`
+    : 'No images found on that page.', !uniq.length);
+}
+async function bootExtension(){
+  $('urlCard').hidden = true;
+  $('pastePanel').hidden = true;
+  const pickerRow = $('pickerRow');
+  if (pickerRow) pickerRow.hidden = true; /* no folder picker in the extension */
+  $('extBanner').hidden = false;
+  let payload = null;
+  try{
+    payload = (await chrome.storage.session.get('comicsaver-payload'))['comicsaver-payload'] || null;
+  }catch(e){ payload = null; }
+  if (!payload || payload.error){
+    $('selectCard').hidden = false;
+    $('grid').innerHTML = '<div class="empty-note">' +
+      escapeHtml((payload && payload.error) ||
+        'Nothing to show. Click the ComicSaver icon while viewing a page to scrape its images.') +
+      '</div>';
+    return;
+  }
+  const src = $('extSource');
+  src.textContent = payload.pageTitle || payload.pageUrl || 'the page';
+  if (payload.pageUrl) src.href = payload.pageUrl;
+  ingestExtension(payload);
+}
+
 /* ================= init ================= */
 applyTheme(localStorage.getItem(LS.theme) || 'dark');
 syncPickerButtons();
 updateWillSaveTo();
+if (IS_EXTENSION) bootExtension();
 </script>
 </body>
 </html>
