@@ -404,7 +404,7 @@
 
   <section class="card" id="saveCard" hidden>
     <h2>3 · Save to a folder</h2>
-    <p class="hint">Each batch goes into its own new folder. Name it, or leave it blank and ComicSaver will take the last folder name and bump any number at its end.</p>
+    <p class="hint">Each batch goes into its own new folder. The name is filled in for you from your last batch (bumping any number at the end) — keep it or type your own.</p>
     <div class="save-grid">
       <div class="field">
         <label class="field-label" for="folderInput">Folder name <span style="font-weight:400">(optional)</span></label>
@@ -520,7 +520,7 @@
             <li><strong>Website (Chrome/Edge):</strong> the File System Access API (<code>showDirectoryPicker</code>) asks for a folder once; each batch becomes a new real subfolder inside it. Configuration offers a “reuse folder” mode so the picker doesn't reappear every batch.</li>
             <li><strong>Website (other browsers):</strong> falls back to anchor downloads into the Downloads folder, with files named <code>&lt;folder&gt;_&lt;file&gt;</code> (browsers flatten “/” in download names, so pages can't create subfolders that way).</li>
             <li><strong>Extension:</strong> saves through <code>chrome.downloads.download</code> straight into the Downloads folder. Every file is renamed to <code>&lt;name&gt;_001.ext</code>, <code>&lt;name&gt;_002.ext</code>, … (zero-padded, original image type kept) so the batch stays together and sorts in page order. <code>conflictAction: 'uniquify'</code> keeps repeat downloads from overwriting. Caveat: Chrome silently ignores the requested file name when another extension manages downloads (it registers an <code>onDeterminingFilename</code> listener — Chromium issue 579563); ComicSaver detects this after the batch and says so instead of claiming the rename worked.</li>
-            <li><strong>Batch naming:</strong> the name field is optional — blank takes the last-used name and increments any trailing number (<code>Chapter 3</code> → <code>Chapter 4</code>; no number → appends “ 2”; first ever → <code>batch-1</code>). The effective name is captured at batch start so typing during a download can't corrupt the increment chain.</li>
+            <li><strong>Batch naming:</strong> the name field comes pre-filled from the last batch, incrementing any trailing number (<code>Chapter 3</code> → <code>Chapter 4</code>; no number → appends “ 2”; first ever → <code>batch-1</code>) — keep it or type over it. The last-used name is kept in the browser's <code>localStorage</code>, and the effective name is captured at batch start so typing during a download can't corrupt the increment chain.</li>
             <li>Individual fetch failures (CORS, hotlinking, dead links) land in a failed list after the batch with links, so they can be grabbed by hand. In the extension, “Reveal files” highlights the first download in the file manager and “Open Downloads folder” opens Downloads (web pages are forbidden from doing either).</li>
           </ul>
         </section>
@@ -590,7 +590,7 @@
       <ul>
         <li><strong>Load a page.</strong> Paste a URL and press <em>Load images</em>. ComicSaver reads the page and pulls out its images: <code>&lt;img&gt;</code> tags (including <code>srcset</code> and lazy-load attributes), <code>&lt;picture&gt;</code> sources, and — if enabled in Configuration — links that point at image files.</li>
         <li><strong>Choose images.</strong> Everything starts selected. Click a thumbnail or its checkbox to deselect it. <em>Select all</em> / <em>Select none</em> are there for big batches.</li>
-        <li><strong>Save to a folder.</strong> Type a folder name, or leave it blank: ComicSaver takes the name you used last time and increments any number at its end (e.g. <code>Chapter 3</code> → <code>Chapter 4</code>). The first batch ever is called <code>batch-1</code>.</li>
+        <li><strong>Save to a folder.</strong> The name is filled in for you from your last batch, incrementing any number at the end (e.g. <code>Chapter 3</code> → <code>Chapter 4</code>) — keep it or type your own. The first batch ever is called <code>batch-1</code>.</li>
       </ul>
       <h3>Where the files go</h3>
       <ul>
@@ -907,6 +907,14 @@ function updateWillSaveTo(){
   $('willSaveTo').appendChild(strong);
 }
 $('folderInput').addEventListener('input', updateWillSaveTo);
+/* Pre-fill the name field with the next suggestion (last name, incremented).
+   Runs at startup and after every batch; the user can keep it or type over it.
+   Clearing the field manually falls back to the same suggestion, shown as the
+   placeholder. */
+function prefillFolderInput(){
+  $('folderInput').value = suggestFolderName();
+  updateWillSaveTo();
+}
 
 /* Extension sequential naming keeps each file's original image type. */
 function extFor(url){
@@ -1077,7 +1085,7 @@ async function downloadBatch(){
 
   /* Remember the name for next batch's suggestion (without the QA stamp). */
   localStorage.setItem(LS.lastFolder, folderBase);
-  $('folderInput').value = '';
+  prefillFolderInput(); /* next suggestion ready for the following batch */
 
   renderFailedList(failed);
   resetDownloadUI();
@@ -1157,7 +1165,7 @@ async function downloadBatchExtension(kept, folder, folderBase){
   }
 
   localStorage.setItem(LS.lastFolder, folderBase);
-  $('folderInput').value = '';
+  prefillFolderInput(); /* next suggestion ready for the following batch */
 
   renderFailedList(failed);
   resetDownloadUI();
@@ -1208,7 +1216,7 @@ function applyExtensionCopy(){
   const h2 = saveCard.querySelector('h2');
   if (h2) h2.textContent = '3 · Name the files';
   const hint = saveCard.querySelector('.hint');
-  if (hint) hint.textContent = 'Each file is saved with the name you choose plus a sequential number, so the batch stays in order in your Downloads folder. Leave it blank and ComicSaver takes the last name and bumps any number at its end.';
+  if (hint) hint.textContent = 'Each file is saved with the name you choose plus a sequential number, so the batch stays in order in your Downloads folder. The name is filled in for you from your last batch (bumping any number at the end) — keep it or type your own.';
   const label = saveCard.querySelector('label[for="folderInput"]');
   if (label) label.innerHTML = 'File name <span style="font-weight:400">(optional)</span>';
   const reveal = $('btnOpenBatchFolder');
@@ -1221,7 +1229,7 @@ function applyExtensionCopy(){
     '<ul>' +
     '<li><strong>Scrape the tab.</strong> Click the ComicSaver toolbar button while viewing a page. ComicSaver reads the live page directly — no URL to paste, no CORS limits — and pulls out its images: <code>&lt;img&gt;</code> tags (including <code>srcset</code> and lazy-load attributes), <code>&lt;picture&gt;</code> sources, and — if enabled in Configuration — links that point at image files.</li>' +
     '<li><strong>Choose images.</strong> Everything starts selected. Click a thumbnail or its checkbox to deselect it. <em>Select all</em> / <em>Select none</em> are there for big batches.</li>' +
-    '<li><strong>Name the files.</strong> Type a name, or leave it blank: ComicSaver takes the name you used last time and increments any number at its end (e.g. <code>Chapter 3</code> → <code>Chapter 4</code>). The first batch ever is called <code>batch-1</code>. Files are saved as <code>&lt;name&gt;_001.jpg</code>, <code>&lt;name&gt;_002.jpg</code>, … so the batch stays in page order.</li>' +
+    '<li><strong>Name the files.</strong> The name is filled in for you from your last batch, incrementing any number at the end (e.g. <code>Chapter 3</code> → <code>Chapter 4</code>) — keep it or type your own. The first batch ever is called <code>batch-1</code>. Files are saved as <code>&lt;name&gt;_001.jpg</code>, <code>&lt;name&gt;_002.jpg</code>, … so the batch stays in page order.</li>' +
     '</ul>' +
     '<h3>Where the files go</h3>' +
     '<ul>' +
@@ -1324,7 +1332,7 @@ async function bootExtension(){
 /* ================= init ================= */
 applyTheme(localStorage.getItem(LS.theme) || 'dark');
 syncPickerButtons();
-updateWillSaveTo();
+prefillFolderInput();
 if (IS_EXTENSION){
   applyExtensionCopy();
   /* File-manager shortcuts: chrome.downloads.show(id) reveals the first
