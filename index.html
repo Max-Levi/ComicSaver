@@ -519,7 +519,7 @@
           <ul>
             <li><strong>Website (Chrome/Edge):</strong> the File System Access API (<code>showDirectoryPicker</code>) asks for a folder once; each batch becomes a new real subfolder inside it. Configuration offers a “reuse folder” mode so the picker doesn't reappear every batch.</li>
             <li><strong>Website (other browsers):</strong> falls back to anchor downloads into the Downloads folder, with files named <code>&lt;folder&gt;_&lt;file&gt;</code> (browsers flatten “/” in download names, so pages can't create subfolders that way).</li>
-            <li><strong>Extension:</strong> saves through <code>chrome.downloads.download</code> straight into the Downloads folder. Every file is renamed to <code>&lt;name&gt;_001.ext</code>, <code>&lt;name&gt;_002.ext</code>, … (zero-padded, original image type kept) so the batch stays together and sorts in page order. <code>conflictAction: 'uniquify'</code> keeps repeat downloads from overwriting.</li>
+            <li><strong>Extension:</strong> saves through <code>chrome.downloads.download</code> straight into the Downloads folder. Every file is renamed to <code>&lt;name&gt;_001.ext</code>, <code>&lt;name&gt;_002.ext</code>, … (zero-padded, original image type kept) so the batch stays together and sorts in page order. <code>conflictAction: 'uniquify'</code> keeps repeat downloads from overwriting. Caveat: Chrome silently ignores the requested file name when another extension manages downloads (it registers an <code>onDeterminingFilename</code> listener — Chromium issue 579563); ComicSaver detects this after the batch and says so instead of claiming the rename worked.</li>
             <li><strong>Batch naming:</strong> the name field is optional — blank takes the last-used name and increments any trailing number (<code>Chapter 3</code> → <code>Chapter 4</code>; no number → appends “ 2”; first ever → <code>batch-1</code>). The effective name is captured at batch start so typing during a download can't corrupt the increment chain.</li>
             <li>Individual fetch failures (CORS, hotlinking, dead links) land in a failed list after the batch with links, so they can be grabbed by hand. In the extension, “Reveal files” highlights the first download in the file manager and “Open Downloads folder” opens Downloads (web pages are forbidden from doing either).</li>
           </ul>
@@ -566,7 +566,7 @@
           <h3>10. QA regression checklist</h3>
           <ul>
             <li><code>comicsaver-test.js</code> — website suite (extraction, selection, folder naming/increment, web saving paths, settings, help): <strong>28 checks</strong>, all green.</li>
-            <li><code>ext-test.js</code> — extension suite: extractor fixture (8), app page with stubbed <code>chrome.*</code> (sequential naming, sanitization, increment, reveal buttons, failure paths), self-update check (9). Run with <code>NODE_PATH=~/workspace/setbook-qa/node_modules node ext-test.js</code>.</li>
+            <li><code>ext-test.js</code> — extension suite: extractor fixture (8), app page with stubbed <code>chrome.*</code> (sequential naming, sanitization, extension copy, docs modal, rename-override detection), self-update check (9). Run with <code>NODE_PATH=~/workspace/setbook-qa/node_modules node ext-test.js</code>.</li>
             <li>Release flow: bump <code>manifest.json</code> version → build → QA green → publish → verify live <code>ext-version.json</code> reports the new version and the zip downloads byte-identical.</li>
           </ul>
         </section>
@@ -1107,6 +1107,7 @@ async function downloadBatchExtension(kept, folder, folderBase){
   const failed = [];
   const completedIds = [];
   const pending = new Map(); /* downloadId -> { url, name } */
+  const requested = new Map(); /* downloadId -> requested filename */
   const onChanged = (delta) => {
     if (!pending.has(delta.id)) return;
     const rec = pending.get(delta.id);
@@ -1131,6 +1132,7 @@ async function downloadBatchExtension(kept, folder, folderBase){
           saveAs: false
         });
         pending.set(id, { url: img.url, name: fname });
+        requested.set(id, fname);
       }catch(e){
         failed.push({ url: img.url, name: fname });
       }
@@ -1160,6 +1162,22 @@ async function downloadBatchExtension(kept, folder, folderBase){
   renderFailedList(failed);
   resetDownloadUI();
   const okCount = kept.length - failed.length;
+  /* Chrome silently ignores our requested filename when another extension
+     manages downloads (it registers an onDeterminingFilename listener), so
+     the batch can land with original website names. Detect that by comparing
+     each completed download's real filename against what we asked for. */
+  let renamedOk = true;
+  for (const [id, fname] of requested){
+    try{
+      const found = await chrome.downloads.search({ id });
+      const item = found && found[0];
+      if (!item || item.state !== 'complete') continue;
+      const landed = (item.filename || '').split(/[/\\]/).pop();
+      /* uniquify may append " (1)"; anything not starting with our base name
+         means Chrome didn't apply the requested name at all. */
+      if (landed && !landed.startsWith(safeName + '_')) renamedOk = false;
+    }catch(e){ /* can't verify this one; don't cry wolf */ }
+  }
   /* Offer file-manager shortcuts when at least one file landed: "Reveal
      files" highlights the first download in the file manager, "Downloads
      folder" opens its parent. (Only an extension can do this — web pages
@@ -1171,10 +1189,14 @@ async function downloadBatchExtension(kept, folder, folderBase){
   const range = kept.length > 1
     ? `“${seqName(0)}” … “${seqName(kept.length - 1)}”`
     : `“${seqName(0)}”`;
-  toast(failed.length
-    ? `Saved ${okCount} of ${kept.length} as ${range} in your Downloads folder. ${failed.length} failed — see the list below.`
-    : `Saved ${kept.length} image${kept.length === 1 ? '' : 's'} as ${range} in your Downloads folder.`,
-    failed.length > 0);
+  if (okCount > 0 && !renamedOk){
+    toast(`Saved ${okCount} file${okCount === 1 ? '' : 's'}, but Chrome kept their original website names instead of ${range}. This happens when another extension manages your downloads — try disabling any download-manager extension and running the batch again.`, true);
+  }else{
+    toast(failed.length
+      ? `Saved ${okCount} of ${kept.length} as ${range} in your Downloads folder. ${failed.length} failed — see the list below.`
+      : `Saved ${kept.length} image${kept.length === 1 ? '' : 's'} as ${range} in your Downloads folder.`,
+      failed.length > 0);
+  }
 }
 
 /* ================= extension copy ================= */
