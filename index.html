@@ -421,7 +421,6 @@
       <div id="progressLabel"></div>
     </div>
     <div class="row" id="extOpenRow" hidden style="margin-top:10px">
-      <button type="button" class="ghost small" id="btnOpenBatchFolder">Open batch folder</button>
       <button type="button" class="ghost small" id="btnOpenDownloadsFolder">Open Downloads folder</button>
     </div>
     <div id="failedList"></div>
@@ -525,7 +524,7 @@
             <li><strong>Website (other browsers):</strong> falls back to anchor downloads into the Downloads folder, with files named <code>&lt;folder&gt;_&lt;file&gt;</code> (browsers flatten “/” in download names, so pages can't create subfolders that way).</li>
             <li><strong>Extension:</strong> saves through <code>chrome.downloads.download</code> straight into the Downloads folder. Every file is renamed to <code>&lt;name&gt;_001.ext</code>, <code>&lt;name&gt;_002.ext</code>, … (zero-padded, original image type kept) so the batch stays together and sorts in page order. <code>conflictAction: 'uniquify'</code> keeps repeat downloads from overwriting. Caveat: Chrome silently ignores the requested file name when another extension manages downloads (it registers an <code>onDeterminingFilename</code> listener — Chromium issue 579563); ComicSaver detects this after the batch and says so instead of claiming the rename worked.</li>
             <li><strong>Batch naming:</strong> the name field comes pre-filled from the last batch, incrementing any trailing number (<code>Chapter 3</code> → <code>Chapter 4</code>; no number → appends “ 2”; first ever → <code>batch-1</code>) — keep it or type over it. The last-used name is kept in the browser's <code>localStorage</code>, and the effective name is captured at batch start so typing during a download can't corrupt the increment chain.</li>
-            <li>Individual fetch failures (CORS, hotlinking, dead links) land in a failed list after the batch with links, so they can be grabbed by hand. In the extension, “Reveal files” highlights the first download in the file manager and “Open Downloads folder” opens Downloads (web pages are forbidden from doing either).</li>
+            <li>Individual fetch failures (CORS, hotlinking, dead links) land in a failed list after the batch with links, so they can be grabbed by hand. In the extension, an “Open Downloads folder” button appears after each successful batch (web pages are forbidden from opening the file manager).</li>
           </ul>
         </section>
         <section id="docs-settings">
@@ -570,7 +569,7 @@
           <h3>10. QA regression checklist</h3>
           <ul>
             <li><code>comicsaver-test.js</code> — website suite (extraction, selection, folder naming/increment, web saving paths, settings, help, URL-scheme security): <strong>31 checks</strong>, all green.</li>
-            <li><code>ext-test.js</code> — extension suite: <strong>53 checks</strong>, all green — extractor fixture (incl. obfuscated <code>javascript:</code> rejection), app page with stubbed <code>chrome.*</code> (sequential naming, sanitization, extension copy, docs modal, rename-override detection), self-update check incl. the step-by-step update guide. Run with <code>NODE_PATH=~/workspace/setbook-qa/node_modules node ext-test.js</code>.</li>
+            <li><code>ext-test.js</code> — extension suite: <strong>51 checks</strong>, all green — extractor fixture (incl. obfuscated <code>javascript:</code> rejection), app page with stubbed <code>chrome.*</code> (sequential naming, sanitization, extension copy, docs modal, rename-override detection), self-update check incl. the step-by-step update guide. Run with <code>NODE_PATH=~/workspace/setbook-qa/node_modules node ext-test.js</code>.</li>
             <li>Release flow: bump <code>manifest.json</code> version → build → QA green → publish → verify live <code>ext-version.json</code> reports the new version and the zip downloads byte-identical.</li>
           </ul>
         </section>
@@ -716,7 +715,7 @@ document.querySelectorAll('#configPickerToggle .mode-btn').forEach(b =>
   }));
 
 /* ================= loading a page ================= */
-const state = { images: [], baseUrl: '', dirHandle: null, downloading: false, lastBatchIds: [] };
+const state = { images: [], baseUrl: '', dirHandle: null, downloading: false };
 
 function normalizeUrl(raw){
   raw = (raw || '').trim();
@@ -1148,14 +1147,13 @@ async function downloadBatchExtension(kept, folder, folderBase){
   const digits = Math.max(3, String(kept.length).length);
   const seqName = (k) => safeName + '_' + String(k + 1).padStart(digits, '0') + extFor(kept[k].url);
   const failed = [];
-  const completedIds = [];
   const pending = new Map(); /* downloadId -> { url, name } */
   const requested = new Map(); /* downloadId -> requested filename */
   const onChanged = (delta) => {
     if (!pending.has(delta.id)) return;
     const rec = pending.get(delta.id);
     const st = delta.state && delta.state.current;
-    if (st === 'complete'){ pending.delete(delta.id); completedIds.push(delta.id); }
+    if (st === 'complete'){ pending.delete(delta.id); }
     else if (st === 'interrupted'){
       pending.delete(delta.id);
       failed.push({ url: rec.url, name: rec.name });
@@ -1221,12 +1219,10 @@ async function downloadBatchExtension(kept, folder, folderBase){
       if (landed && !landed.startsWith(safeName + '_')) renamedOk = false;
     }catch(e){ /* can't verify this one; don't cry wolf */ }
   }
-  /* Offer file-manager shortcuts when at least one file landed: "Reveal
-     files" highlights the first download in the file manager, "Downloads
-     folder" opens its parent. (Only an extension can do this — web pages
-     are forbidden from opening the file manager.) */
-  if (okCount > 0 && completedIds.length){
-    state.lastBatchIds = completedIds;
+  /* Offer the Downloads-folder shortcut when at least one file landed.
+     (Only an extension can do this — web pages are forbidden from opening
+     the file manager.) */
+  if (okCount > 0){
     $('extOpenRow').hidden = false;
   }
   const range = kept.length > 1
@@ -1254,8 +1250,6 @@ function applyExtensionCopy(){
   if (hint) hint.textContent = 'Each file is saved with the name you choose plus a sequential number, so the batch stays in order in your Downloads folder. The name is filled in for you from your last batch (bumping any number at the end) — keep it or type your own.';
   const label = saveCard.querySelector('label[for="folderInput"]');
   if (label) label.innerHTML = 'File name <span style="font-weight:400">(optional)</span>';
-  const reveal = $('btnOpenBatchFolder');
-  if (reveal) reveal.textContent = 'Reveal files';
   const help = document.querySelector('#helpOverlay .help-content');
   if (help) help.innerHTML =
     '<h3>What it does</h3>' +
@@ -1268,7 +1262,7 @@ function applyExtensionCopy(){
     '</ul>' +
     '<h3>Where the files go</h3>' +
     '<ul>' +
-    '<li>Straight into your Downloads folder, renamed <code>&lt;name&gt;_001.jpg</code>, <code>&lt;name&gt;_002.jpg</code>, … in page order. After a batch you can reveal the files in your file manager or open the Downloads folder.</li>' +
+    '<li>Straight into your Downloads folder, renamed <code>&lt;name&gt;_001.jpg</code>, <code>&lt;name&gt;_002.jpg</code>, … in page order.</li>' +
     '<li>If a file can\'t be downloaded (for example, the site blocks it), it lands in a failed list after the batch with a link so you can save it by hand.</li>' +
     '</ul>' +
     '<h3>Why some pages show no images</h3>' +
@@ -1376,15 +1370,8 @@ syncPickerButtons();
 prefillFolderInput();
 if (IS_EXTENSION){
   applyExtensionCopy();
-  /* File-manager shortcuts: chrome.downloads.show(id) reveals the first
-     download in the file manager with the file highlighted;
-     showDefaultFolder() opens the Downloads folder it lives in. */
-  $('btnOpenBatchFolder').addEventListener('click', () => {
-    const ids = state.lastBatchIds || [];
-    if (!ids.length) return;
-    try{ chrome.downloads.show(ids[0]); }
-    catch(e){ toast('Could not reveal the files.', true); }
-  });
+  /* Downloads-folder shortcut: chrome.downloads.showDefaultFolder() opens
+     the Downloads folder. */
   $('btnOpenDownloadsFolder').addEventListener('click', () => {
     try{ chrome.downloads.showDefaultFolder(); }
     catch(e){ toast('Could not open the Downloads folder.', true); }
