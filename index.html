@@ -453,16 +453,6 @@
       </span>
       <input type="checkbox" class="config-check" id="configLinked" aria-label="Collect linked images">
     </label>
-    <div class="config-row" id="pickerRow">
-      <div class="config-text">
-        <div class="config-name">Ask where to save, every time</div>
-        <div class="config-desc">When supported, show the folder picker on every download instead of reusing the folder you picked before. Saved on this device.</div>
-      </div>
-      <div class="mode-toggle" id="configPickerToggle">
-        <button type="button" class="mode-btn" data-picker-choice="every">Every time</button>
-        <button type="button" class="mode-btn" data-picker-choice="reuse">Reuse</button>
-      </div>
-    </div>
     <div class="modal-actions">
       <button type="button" class="primary small" data-close>Done</button>
     </div>
@@ -524,7 +514,7 @@
         <section id="docs-saving">
           <h3>5. Saving</h3>
           <ul>
-            <li><strong>Website (Chrome/Edge):</strong> the File System Access API (<code>showDirectoryPicker</code>) asks for a folder once; each batch becomes a new real subfolder inside it. Configuration offers a “reuse folder” mode so the picker doesn't reappear every batch.</li>
+            <li><strong>Website (Chrome/Edge):</strong> the File System Access API (<code>showDirectoryPicker</code>) asks for a folder once; each batch becomes a new real subfolder inside it. The picked folder is reused for every batch.</li>
             <li><strong>Website (other browsers):</strong> falls back to anchor downloads into the Downloads folder, with files named <code>&lt;folder&gt;_&lt;file&gt;</code> (browsers flatten “/” in download names, so pages can't create subfolders that way).</li>
             <li><strong>Extension:</strong> saves through <code>chrome.downloads.download</code> straight into the Downloads folder. Every file is renamed to <code>&lt;name&gt;_001.ext</code>, <code>&lt;name&gt;_002.ext</code>, … (zero-padded, original image type kept) so the batch stays together and sorts in page order. <code>conflictAction: 'uniquify'</code> keeps repeat downloads from overwriting. Caveat: Chrome silently ignores the requested file name when another extension manages downloads (it registers an <code>onDeterminingFilename</code> listener — Chromium issue 579563); ComicSaver detects this after the batch and says so instead of claiming the rename worked.</li>
             <li><strong>Batch naming:</strong> the name field comes pre-filled from the last batch, incrementing any trailing number (<code>Chapter 3</code> → <code>Chapter 4</code>; no number → appends “ 2”; first ever → <code>batch-1</code>) — keep it or type over it. The last-used name is kept in the browser's <code>localStorage</code>, and the effective name is captured at batch start so typing during a download can't corrupt the increment chain.</li>
@@ -538,7 +528,6 @@
             <li><code>comicsaver-theme</code> — <code>dark</code> / <code>light</code> appearance.</li>
             <li><code>comicsaver-last-folder</code> — last batch name, feeding the auto-increment.</li>
             <li><code>comicsaver-linked-images</code> — <code>1</code> collects linked image files too.</li>
-            <li><code>comicsaver-picker-mode</code> — website folder-picker <code>reuse</code> / <code>ask</code>.</li>
             <li><code>comicsaver-ext-update-dismissed</code> — extension self-update banner dismissal per version.</li>
           </ul>
         </section>
@@ -651,7 +640,6 @@ const LS = {
   theme: 'comicsaver-theme',
   lastFolder: 'comicsaver-last-folder',
   linked: 'comicsaver-linked-images',
-  picker: 'comicsaver-picker-mode',
 };
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
@@ -706,17 +694,6 @@ document.querySelectorAll('#configThemeToggle .mode-btn').forEach(b =>
 $('configLinked').checked = localStorage.getItem(LS.linked) === '1';
 $('configLinked').addEventListener('change', e =>
   localStorage.setItem(LS.linked, e.target.checked ? '1' : '0'));
-
-function syncPickerButtons(){
-  const cur = localStorage.getItem(LS.picker) || 'reuse';
-  document.querySelectorAll('#configPickerToggle .mode-btn').forEach(b =>
-    b.classList.toggle('active', b.dataset.pickerChoice === cur));
-}
-document.querySelectorAll('#configPickerToggle .mode-btn').forEach(b =>
-  b.addEventListener('click', () => {
-    localStorage.setItem(LS.picker, b.dataset.pickerChoice);
-    syncPickerButtons();
-  }));
 
 /* ================= loading a page ================= */
 const state = { images: [], baseUrl: '', dirHandle: null, downloading: false };
@@ -1009,8 +986,8 @@ function triggerAnchorDownload(href, path){
   document.body.appendChild(a); a.click(); a.remove();
 }
 async function getDirHandle(){
-  const reuse = (localStorage.getItem(LS.picker) || 'reuse') !== 'every';
-  if (state.dirHandle && reuse){
+  /* The picked folder is always reused once granted — no per-batch prompt. */
+  if (state.dirHandle){
     try{
       if (await state.dirHandle.queryPermission({ mode: 'readwrite' }) === 'granted')
         return state.dirHandle;
@@ -1345,8 +1322,6 @@ $('extUpdateDismiss').addEventListener('click', () => {
 async function bootExtension(){
   $('urlCard').hidden = true;
   $('pastePanel').hidden = true;
-  const pickerRow = $('pickerRow');
-  if (pickerRow) pickerRow.hidden = true; /* no folder picker in the extension */
   $('extBanner').hidden = false;
   let payload = null;
   try{
@@ -1370,7 +1345,6 @@ async function bootExtension(){
 
 /* ================= init ================= */
 applyTheme(localStorage.getItem(LS.theme) || 'dark');
-syncPickerButtons();
 prefillFolderInput();
 if (IS_EXTENSION){
   applyExtensionCopy();
