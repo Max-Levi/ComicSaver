@@ -287,6 +287,23 @@
 
   /* ---------- help modal (reused from SetBook) ---------- */
   .modal-help{ width:640px; }
+  .modal-docs{ width:760px; }
+  .help-layout{ display:flex; gap:22px; align-items:flex-start; margin-top:14px; }
+  .help-nav{
+    width:168px; flex:none; display:flex; flex-direction:column; gap:2px;
+    position:sticky; top:0; max-height:calc(88vh - 180px); overflow-y:auto;
+  }
+  .help-nav a{
+    font-size:12.5px; color:var(--text-muted); text-decoration:none;
+    padding:5px 8px; border-radius:5px; white-space:nowrap;
+  }
+  .help-nav a:hover{ background:var(--hover-bg); color:var(--text); }
+  .help-content section{ scroll-margin-top:6px; }
+  .help-content section:first-child h3{ margin-top:0; }
+  @media (max-width:680px){
+    .help-layout{ flex-direction:column; }
+    .help-nav{ width:100%; flex-direction:row; flex-wrap:wrap; position:static; max-height:none; }
+  }
   .help-content{ font-size:13px; line-height:1.55; color:var(--text-muted); margin-top:10px; }
   .help-content h3{ font-size:14px; color:var(--text); margin:18px 0 8px; }
   .help-content h3:first-child{ margin-top:0; }
@@ -447,6 +464,120 @@
   </div>
 </div>
 
+<!-- Technical documentation modal -->
+<div class="modal-overlay" id="docsOverlay">
+  <div class="modal modal-docs">
+    <div class="modal-close-wrap"><button type="button" class="modal-close" data-close aria-label="Close dialog"><svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M3 3l10 10M13 3L3 13" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/></svg></button></div>
+    <h2>ComicSaver — Technical Documentation</h2>
+    <p class="modal-sub">Last updated 2026-09-25.</p>
+    <div class="help-layout">
+      <nav class="help-nav">
+        <a href="#docs-overview">1. Overview</a>
+        <a href="#docs-architecture">2. Architecture</a>
+        <a href="#docs-collection">3. Image collection</a>
+        <a href="#docs-selection">4. Choosing images</a>
+        <a href="#docs-saving">5. Saving</a>
+        <a href="#docs-settings">6. Settings</a>
+        <a href="#docs-extension">7. Chrome extension</a>
+        <a href="#docs-requirements">8. Requirements</a>
+        <a href="#docs-maintainer">9. Maintainer notes</a>
+        <a href="#docs-qa">10. QA regression checklist</a>
+      </nav>
+      <div class="help-content">
+        <section id="docs-overview">
+          <h3>1. Overview</h3>
+          <p>ComicSaver is a single-file, client-side web application for bulk-saving the images from a page — built for downloading manga/comic chapters a page at a time. Paste a page URL, review the images as thumbnails, drop the ones you don't want, then download the rest.</p>
+          <p>The entire application — markup, styles, and logic — is contained in one HTML file. There is no build step for the web version, no backend, no account system, and no database. A companion Chrome extension scrapes the open tab directly and saves through the downloads API.</p>
+        </section>
+        <section id="docs-architecture">
+          <h3>2. Architecture</h3>
+          <ul>
+            <li>All application state is held in a single in-memory <code>state</code> object (<code>images</code> with per-image <code>kept</code> flags, <code>baseUrl</code>, UI flags). Rendering is performed by small render functions (<code>renderGrid</code>, <code>renderFailedList</code>) that rebuild their panes from that state.</li>
+            <li>Two compile-time flags select the build variant from the same source: <code>IS_QA</code> (QA site: red badge, “ — QA” title, “ QA” stamped into names) and <code>IS_EXTENSION</code> (Chrome extension app page).</li>
+            <li>Appearance is controlled by a <code>data-theme</code> attribute on the <code>&lt;html&gt;</code> element (dark default, light follows the device), persisted per device.</li>
+            <li>Thumbnails and downloads request images with <code>referrerpolicy="no-referrer"</code> / <code>referrerPolicy: 'no-referrer'</code>, which defeats the most common kind of hotlink protection (servers that 403 on a foreign <code>Referer</code> but allow a missing one).</li>
+          </ul>
+        </section>
+        <section id="docs-collection">
+          <h3>3. Image collection</h3>
+          <ul>
+            <li><strong>Website:</strong> the pasted page is fetched and parsed with <code>DOMParser</code>. The extractor collects <code>&lt;img&gt;</code> <code>src</code> (falling back through <code>data-src</code> and other lazy-load attributes), the largest candidate of each <code>srcset</code>/<code>data-srcset</code>, the largest <code>&lt;source&gt;</code> inside <code>&lt;picture&gt;</code>, and — when “Collect linked images” is enabled — <code>&lt;a&gt;</code> links whose <code>href</code> points at an image file.</li>
+            <li><strong>CORS:</strong> browsers only let a page read another site's content if that site allows it. When a page can't be fetched directly, ComicSaver offers a paste-page-source fallback (view source, copy, paste).</li>
+            <li><strong>Extension:</strong> a content script runs the same extractor rules against the live tab's DOM, so there is no fetch and no CORS involved; the payload travels to the app page via <code>chrome.storage.session</code>.</li>
+            <li>Duplicates are removed; the surviving images keep page order.</li>
+          </ul>
+        </section>
+        <section id="docs-selection">
+          <h3>4. Choosing images</h3>
+          <ul>
+            <li>Everything starts selected. Clicking a thumbnail or its checkbox toggles it; <em>Select all</em> / <em>Select none</em> handle big batches. The header shows a live “N of M selected” count.</li>
+            <li>Only kept images are downloaded, in page order.</li>
+          </ul>
+        </section>
+        <section id="docs-saving">
+          <h3>5. Saving</h3>
+          <ul>
+            <li><strong>Website (Chrome/Edge):</strong> the File System Access API (<code>showDirectoryPicker</code>) asks for a folder once; each batch becomes a new real subfolder inside it. Configuration offers a “reuse folder” mode so the picker doesn't reappear every batch.</li>
+            <li><strong>Website (other browsers):</strong> falls back to anchor downloads into the Downloads folder, with files named <code>&lt;folder&gt;_&lt;file&gt;</code> (browsers flatten “/” in download names, so pages can't create subfolders that way).</li>
+            <li><strong>Extension:</strong> saves through <code>chrome.downloads.download</code> straight into the Downloads folder. Every file is renamed to <code>&lt;name&gt;_001.ext</code>, <code>&lt;name&gt;_002.ext</code>, … (zero-padded, original image type kept) so the batch stays together and sorts in page order. <code>conflictAction: 'uniquify'</code> keeps repeat downloads from overwriting.</li>
+            <li><strong>Batch naming:</strong> the name field is optional — blank takes the last-used name and increments any trailing number (<code>Chapter 3</code> → <code>Chapter 4</code>; no number → appends “ 2”; first ever → <code>batch-1</code>). The effective name is captured at batch start so typing during a download can't corrupt the increment chain.</li>
+            <li>Individual fetch failures (CORS, hotlinking, dead links) land in a failed list after the batch with links, so they can be grabbed by hand. In the extension, “Reveal files” highlights the first download in the file manager and “Open Downloads folder” opens Downloads (web pages are forbidden from doing either).</li>
+          </ul>
+        </section>
+        <section id="docs-settings">
+          <h3>6. Settings</h3>
+          <p>All settings live in the browser's <code>localStorage</code> — no files, no sync:</p>
+          <ul>
+            <li><code>comicsaver-theme</code> — <code>dark</code> / <code>light</code> appearance.</li>
+            <li><code>comicsaver-last-folder</code> — last batch name, feeding the auto-increment.</li>
+            <li><code>comicsaver-linked-images</code> — <code>1</code> collects linked image files too.</li>
+            <li><code>comicsaver-picker-mode</code> — website folder-picker <code>reuse</code> / <code>ask</code>.</li>
+            <li><code>comicsaver-ext-update-dismissed</code> — extension self-update banner dismissal per version.</li>
+          </ul>
+        </section>
+        <section id="docs-extension">
+          <h3>7. Chrome extension</h3>
+          <ul>
+            <li>Manifest V3. Permissions are minimal: <code>activeTab</code>, <code>scripting</code>, <code>downloads</code>, <code>storage</code> — no broad host access.</li>
+            <li>Flow: toolbar click → background worker injects the content script into the live tab → scraped payload via <code>chrome.storage.session</code> → app tab (the familiar ComicSaver UI, built from the same source with <code>IS_EXTENSION</code>) opens.</li>
+            <li>MV3 extension pages forbid inline scripts, so the build externalizes the script to <code>app.js</code>.</li>
+            <li><strong>Self-update:</strong> unpacked extensions don't auto-update, so the app page fetches <code>ext-version.json</code> from the site on every open and shows a banner when a newer version exists, with a download link and per-version dismiss.</li>
+          </ul>
+        </section>
+        <section id="docs-requirements">
+          <h3>8. Requirements</h3>
+          <ul>
+            <li>Website folder picker: Chrome or Edge (File System Access API). All other modern browsers get the Downloads-folder fallback.</li>
+            <li>Extension: Chrome (or another Chromium browser with <code>chrome.downloads</code>).</li>
+            <li>The sites are plain static pages — JavaScript required, no network beyond the target page and its images.</li>
+          </ul>
+        </section>
+        <section id="docs-maintainer">
+          <h3>9. Maintainer notes</h3>
+          <ul>
+            <li>Source of truth is the single <code>index.html</code>; the QA and extension builds are generated, never hand-edited.</li>
+            <li>GitHub Pages sites (public, unlisted via <code>noindex</code> + <code>robots.txt</code> disallow-all): production <code>Max-Levi/ComicSaver</code> and QA <code>Max-Levi/ComicSaver-QA</code>. GitHub free can't serve Pages from a private repo, hence public-but-unlisted.</li>
+            <li>Deploy scripts mirror the SetBook workflow: <code>comicsaver_deploy.py</code> (prod), <code>comicsaver_qa_deploy.py</code> (flips <code>IS_QA</code>, injects noindex). Extension: <code>comicsaver_ext_build.py</code> (flips <code>IS_EXTENSION</code>, externalizes the script, zips <code>dist/</code>) and <code>comicsaver_ext_publish.py</code> (builds, then pushes the zip + <code>ext-version.json</code> to the prod Pages site).</li>
+            <li>Only large features go to QA first; small fixes go straight to production. When unsure, ask.</li>
+            <li>Per standing rule: after any app update, offer to update this documentation — it never changes without approval.</li>
+          </ul>
+        </section>
+        <section id="docs-qa">
+          <h3>10. QA regression checklist</h3>
+          <ul>
+            <li><code>comicsaver-test.js</code> — website suite (extraction, selection, folder naming/increment, web saving paths, settings, help): <strong>28 checks</strong>, all green.</li>
+            <li><code>ext-test.js</code> — extension suite: extractor fixture (8), app page with stubbed <code>chrome.*</code> (sequential naming, sanitization, increment, reveal buttons, failure paths), self-update check (9). Run with <code>NODE_PATH=~/workspace/setbook-qa/node_modules node ext-test.js</code>.</li>
+            <li>Release flow: bump <code>manifest.json</code> version → build → QA green → publish → verify live <code>ext-version.json</code> reports the new version and the zip downloads byte-identical.</li>
+          </ul>
+        </section>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button type="button" class="primary small" data-close>Done</button>
+    </div>
+  </div>
+</div>
+
 <!-- Help modal -->
 <div class="modal-overlay" id="helpOverlay">
   <div class="modal modal-help">
@@ -467,9 +598,10 @@
         <li>Other browsers save into your normal Downloads folder, with every file named <code>&lt;folder&gt;_&lt;file&gt;</code> (browsers don't let a page create subfolders there) so each batch stays grouped together.</li>
       </ul>
       <h3>Why some pages won't load</h3>
-      <p>Browsers only let a page read another site's content if that site allows it (CORS). Many sites don't. When a page can't be fetched directly, ComicSaver offers the paste-source workaround: view the page's source (<strong>Ctrl/Cmd+U</strong>), copy it, and paste it in. Previews and downloads request images <em>without</em> a referrer, which defeats the most common kind of hotlink protection; sites that insist on their own address as the referrer can't be loaded by any web page — those files land in the failed list after the batch so you can grab them by hand. There is also a <strong>ComicSaver Chrome extension</strong> that reads the open tab directly, so the URL step and the paste workaround go away entirely — and its downloads land in real subfolders.</p>
+      <p>Browsers only let a page read another site's content if that site allows it (CORS). Many sites don't. When a page can't be fetched directly, ComicSaver offers the paste-source workaround: view the page's source (<strong>Ctrl/Cmd+U</strong>), copy it, and paste it in. Previews and downloads request images <em>without</em> a referrer, which defeats the most common kind of hotlink protection; sites that insist on their own address as the referrer can't be loaded by any web page — those files land in the failed list after the batch so you can grab them by hand. There is also a <strong>ComicSaver Chrome extension</strong> that reads the open tab directly, so the URL step and the paste workaround go away entirely — and its downloads are saved with sequential file names.</p>
     </div>
     <div class="modal-actions">
+      <button type="button" class="ghost small" id="btnDocs">Technical documentation</button>
       <button type="button" class="primary small" data-close>Done</button>
     </div>
   </div>
@@ -523,6 +655,10 @@ document.querySelectorAll('.modal-overlay').forEach(o =>
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeOverlays(); });
 $('btnConfig').addEventListener('click', () => $('configOverlay').classList.add('open'));
 $('btnHelp').addEventListener('click', () => $('helpOverlay').classList.add('open'));
+$('btnDocs').addEventListener('click', () => {
+  $('helpOverlay').classList.remove('open');
+  $('docsOverlay').classList.add('open');
+});
 
 /* ================= configuration ================= */
 function syncThemeButtons(){
@@ -755,12 +891,37 @@ function updateWillSaveTo(){
   const suggestion = suggestFolderName();
   $('folderInput').placeholder = 'e.g. ' + suggestion;
   const strong = document.createElement('strong');
-  strong.textContent = resolveFolderName();
-  $('willSaveTo').textContent = 'Will save to: ';
+  if (IS_EXTENSION){
+    /* Preview the sequential file naming: <name>_001 … <name>_00N. */
+    const name = resolveFolderName();
+    const n = Math.max(state.images.filter(i => i.kept).length, 1);
+    const digits = Math.max(3, String(n).length);
+    strong.textContent = n > 1
+      ? `${name}_001 … ${name}_` + String(n).padStart(digits, '0')
+      : `${name}_001`;
+    $('willSaveTo').textContent = 'Files will be named: ';
+  }else{
+    strong.textContent = resolveFolderName();
+    $('willSaveTo').textContent = 'Will save to: ';
+  }
   $('willSaveTo').appendChild(strong);
 }
 $('folderInput').addEventListener('input', updateWillSaveTo);
 
+/* Extension sequential naming keeps each file's original image type. */
+function extFor(url){
+  if (url.startsWith('data:')){
+    const m = url.match(/^data:image\/([a-z0-9+]+)/i);
+    let ext = ((m && m[1]) || 'png').toLowerCase().replace('jpeg', 'jpg');
+    return '.' + (ext === 'svg+xml' ? 'svg' : ext);
+  }
+  try{
+    const p = new URL(url).pathname;
+    const base = decodeURIComponent(p.substring(p.lastIndexOf('/') + 1)).split(/[?#]/)[0];
+    const m = base.match(/\.[a-z0-9]{2,5}$/i);
+    return m ? m[0].toLowerCase() : '.jpg';
+  }catch(e){ return '.jpg'; }
+}
 /* ================= downloading ================= */
 function fileNameFor(url, i, taken){
   let name;
@@ -929,9 +1090,9 @@ async function downloadBatch(){
 $('btnDownload').addEventListener('click', downloadBatch);
 
 /* ================= extension download path ================= */
-/* The Chrome extension saves through chrome.downloads, which CAN create real
-   subfolders (unlike anchor downloads) — every batch lands in
-   Downloads/<folder>/. */
+/* The Chrome extension saves through chrome.downloads straight into the
+   Downloads folder. Every file is renamed to <name>_001.ext,
+   <name>_002.ext, … so the batch stays together and sorts in page order. */
 async function downloadBatchExtension(kept, folder, folderBase){
   state.downloading = true;
   $('btnDownload').disabled = true;
@@ -940,8 +1101,9 @@ async function downloadBatchExtension(kept, folder, folderBase){
   $('failedList').innerHTML = '';
   $('extOpenRow').hidden = true;
 
-  const safeFolder = folder.replace(/[\\/:*?"<>|]/g, '_').trim() || 'batch';
-  const taken = new Set();
+  const safeName = folder.replace(/[\\/:*?"<>|]/g, '_').trim() || 'batch';
+  const digits = Math.max(3, String(kept.length).length);
+  const seqName = (k) => safeName + '_' + String(k + 1).padStart(digits, '0') + extFor(kept[k].url);
   const failed = [];
   const completedIds = [];
   const pending = new Map(); /* downloadId -> { url, name } */
@@ -959,12 +1121,12 @@ async function downloadBatchExtension(kept, folder, folderBase){
   try{
     for (let k = 0; k < kept.length; k++){
       const img = kept[k];
-      const fname = fileNameFor(img.url, k, taken);
+      const fname = seqName(k);
       $('progressLabel').textContent = `Saving ${k + 1} of ${kept.length} — ${fname}`;
       try{
         const id = await chrome.downloads.download({
           url: img.url,
-          filename: safeFolder + '/' + fname,
+          filename: fname,
           conflictAction: 'uniquify',
           saveAs: false
         });
@@ -998,18 +1160,54 @@ async function downloadBatchExtension(kept, folder, folderBase){
   renderFailedList(failed);
   resetDownloadUI();
   const okCount = kept.length - failed.length;
-  /* Offer folder shortcuts when at least one file landed: "batch folder"
-     reveals the new subfolder in the file manager, "Downloads folder" opens
-     its parent. (Only an extension can do this — web pages are forbidden
-     from opening the file manager.) */
+  /* Offer file-manager shortcuts when at least one file landed: "Reveal
+     files" highlights the first download in the file manager, "Downloads
+     folder" opens its parent. (Only an extension can do this — web pages
+     are forbidden from opening the file manager.) */
   if (okCount > 0 && completedIds.length){
     state.lastBatchIds = completedIds;
     $('extOpenRow').hidden = false;
   }
+  const range = kept.length > 1
+    ? `“${seqName(0)}” … “${seqName(kept.length - 1)}”`
+    : `“${seqName(0)}”`;
   toast(failed.length
-    ? `Saved ${okCount} of ${kept.length} into “${safeFolder}” in your Downloads folder. ${failed.length} failed — see the list below.`
-    : `Saved ${kept.length} image${kept.length === 1 ? '' : 's'} into “${safeFolder}” in your Downloads folder.`,
+    ? `Saved ${okCount} of ${kept.length} as ${range} in your Downloads folder. ${failed.length} failed — see the list below.`
+    : `Saved ${kept.length} image${kept.length === 1 ? '' : 's'} as ${range} in your Downloads folder.`,
     failed.length > 0);
+}
+
+/* ================= extension copy ================= */
+/* The extension renames files instead of making folders, and scrapes the
+   live tab instead of fetching a URL — rewrite the UI and help copy that
+   describe the website flow. Runs at boot when IS_EXTENSION. */
+function applyExtensionCopy(){
+  const saveCard = $('saveCard');
+  const h2 = saveCard.querySelector('h2');
+  if (h2) h2.textContent = '3 · Name the files';
+  const hint = saveCard.querySelector('.hint');
+  if (hint) hint.textContent = 'Each file is saved with the name you choose plus a sequential number, so the batch stays in order in your Downloads folder. Leave it blank and ComicSaver takes the last name and bumps any number at its end.';
+  const label = saveCard.querySelector('label[for="folderInput"]');
+  if (label) label.innerHTML = 'File name <span style="font-weight:400">(optional)</span>';
+  const reveal = $('btnOpenBatchFolder');
+  if (reveal) reveal.textContent = 'Reveal files';
+  const help = document.querySelector('#helpOverlay .help-content');
+  if (help) help.innerHTML =
+    '<h3>What it does</h3>' +
+    '<p>ComicSaver reads the tab you clicked the toolbar button on, lists every image on it as thumbnails, lets you drop the ones you don\'t want, then saves the rest into your Downloads folder with sequential file names.</p>' +
+    '<h3>The three steps</h3>' +
+    '<ul>' +
+    '<li><strong>Scrape the tab.</strong> Click the ComicSaver toolbar button while viewing a page. ComicSaver reads the live page directly — no URL to paste, no CORS limits — and pulls out its images: <code>&lt;img&gt;</code> tags (including <code>srcset</code> and lazy-load attributes), <code>&lt;picture&gt;</code> sources, and — if enabled in Configuration — links that point at image files.</li>' +
+    '<li><strong>Choose images.</strong> Everything starts selected. Click a thumbnail or its checkbox to deselect it. <em>Select all</em> / <em>Select none</em> are there for big batches.</li>' +
+    '<li><strong>Name the files.</strong> Type a name, or leave it blank: ComicSaver takes the name you used last time and increments any number at its end (e.g. <code>Chapter 3</code> → <code>Chapter 4</code>). The first batch ever is called <code>batch-1</code>. Files are saved as <code>&lt;name&gt;_001.jpg</code>, <code>&lt;name&gt;_002.jpg</code>, … so the batch stays in page order.</li>' +
+    '</ul>' +
+    '<h3>Where the files go</h3>' +
+    '<ul>' +
+    '<li>Straight into your Downloads folder, renamed <code>&lt;name&gt;_001.jpg</code>, <code>&lt;name&gt;_002.jpg</code>, … in page order. After a batch you can reveal the files in your file manager or open the Downloads folder.</li>' +
+    '<li>If a file can\'t be downloaded (for example, the site blocks it), it lands in a failed list after the batch with a link so you can save it by hand.</li>' +
+    '</ul>' +
+    '<h3>Why some pages show no images</h3>' +
+    '<p>The extension reads the live tab directly, so the CORS limits that affect the website don\'t apply here. If a page shows no images, it genuinely has none in its markup — CSS background images aren\'t collected.</p>';
 }
 
 /* ================= extension boot ================= */
@@ -1106,14 +1304,15 @@ applyTheme(localStorage.getItem(LS.theme) || 'dark');
 syncPickerButtons();
 updateWillSaveTo();
 if (IS_EXTENSION){
-  /* Folder shortcuts: chrome.downloads.show(id) reveals the batch subfolder
-     in the file manager with the file highlighted; showDefaultFolder() opens
-     the Downloads folder it lives in. */
+  applyExtensionCopy();
+  /* File-manager shortcuts: chrome.downloads.show(id) reveals the first
+     download in the file manager with the file highlighted;
+     showDefaultFolder() opens the Downloads folder it lives in. */
   $('btnOpenBatchFolder').addEventListener('click', () => {
     const ids = state.lastBatchIds || [];
     if (!ids.length) return;
     try{ chrome.downloads.show(ids[0]); }
-    catch(e){ toast('Could not open the folder.', true); }
+    catch(e){ toast('Could not reveal the files.', true); }
   });
   $('btnOpenDownloadsFolder').addEventListener('click', () => {
     try{ chrome.downloads.showDefaultFolder(); }
