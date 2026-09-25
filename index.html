@@ -1,0 +1,897 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="robots" content="noindex,nofollow">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ComicSaver</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Work+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  /* ---------- theme tokens (reused from SetBook) ---------- */
+  :root{
+    --bg: #1b1b1e;
+    --panel: #232327;
+    --panel-2: #29292e;
+    --gold: #c9a227;
+    --gold-dim: #8a7220;
+    --gold-hover: #d9b12c;
+    --gold-tint: #2f2a1c;
+    --gold-tint-strong: #3a3320;
+    --text: #ede9e1;
+    --text-muted: #9c9890;
+    --placeholder: #6b6864;
+    --border: #38383d;
+    --hover-bg: #2d2d33;
+    --hover-border: #55555c;
+    --focus-border: #6b6b73;
+    --danger: #b1503f;
+    --on-gold-text: #1b1b1e;
+    --success: #6fae6a;
+    --scrollbar-thumb: #3a3a3f;
+  }
+  [data-theme="light"]{
+    --bg: #f6f5f0;
+    --panel: #ffffff;
+    --panel-2: #eeece3;
+    --gold: #8a6a10;
+    --gold-dim: #b08f4a;
+    --gold-hover: #74590c;
+    --gold-tint: #f6eed7;
+    --gold-tint-strong: #ecdfb3;
+    --text: #29271f;
+    --text-muted: #746f62;
+    --placeholder: #aca690;
+    --border: #e1ddd0;
+    --hover-bg: #efece2;
+    --hover-border: #c9c3b2;
+    --focus-border: #a39c8a;
+    --danger: #a4402f;
+    --on-gold-text: #ffffff;
+    --success: #4a9350;
+    --scrollbar-thumb: #ddd7c6;
+  }
+  *{ box-sizing: border-box; }
+  html,body{ height:100%; }
+  body{
+    margin:0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Work Sans', -apple-system, 'Segoe UI', sans-serif;
+    display:flex;
+    flex-direction:column;
+    height:100vh;
+    overflow:hidden;
+  }
+  .mono{ font-family:'JetBrains Mono', ui-monospace, monospace; }
+
+  /* ---------- top bar (reused from SetBook) ---------- */
+  header{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding: 14px 20px;
+    border-bottom:1px solid var(--border);
+    background: var(--panel);
+    flex-shrink:0;
+    gap:10px;
+  }
+  .brand{ display:flex; align-items:baseline; gap:10px; min-width:0; }
+  .brand h1{ font-size:17px; margin:0; font-weight:600; letter-spacing:.2px; white-space:nowrap; }
+  .brand h1 span{ color: var(--gold); }
+  .brand small{ color: var(--text-muted); font-size:12px; white-space:nowrap; }
+  .brand .qa-badge{
+    display:inline-flex; align-items:center; flex-shrink:0;
+    font-size:15px; font-weight:800; letter-spacing:2px;
+    color:#fff; background:#c0392b;
+    border-radius:8px; padding:5px 12px 5px 14px;
+    box-shadow:0 0 0 2px rgba(192,57,43,.35);
+  }
+  .actions{ display:flex; gap:8px; flex-shrink:0; }
+
+  /* ---------- buttons (reused from SetBook) ---------- */
+  button{
+    font-family:inherit;
+    font-size:13px;
+    border:1px solid var(--border);
+    background: var(--panel-2);
+    color: var(--text);
+    padding:7px 13px;
+    border-radius:6px;
+    cursor:pointer;
+    transition: border-color .15s ease, background .15s ease;
+  }
+  button:hover{ border-color: var(--hover-border); background: var(--hover-bg); }
+  button:disabled{ opacity:.45; cursor:not-allowed; }
+  button.primary{
+    background: var(--gold);
+    border-color: var(--gold);
+    color: var(--on-gold-text);
+    font-weight:600;
+  }
+  button.primary:hover{ background: var(--gold-hover); }
+  button.ghost{ background:transparent; }
+  button.small{ padding:4px 9px; font-size:12px; }
+  header .actions .ghost.small{
+    font-size:14px;
+    padding:10px 16px;
+    min-height:42px;
+  }
+
+  /* ---------- inputs (reused from SetBook) ---------- */
+  .modal-input{
+    width:100%; background: var(--panel-2); border:1px solid var(--border); color:var(--text);
+    border-radius:6px; padding:8px 10px; font-size:13.5px; font-family:inherit;
+    box-sizing:border-box; margin-bottom:16px;
+  }
+  .modal-input:focus{ outline:none; border-color: var(--focus-border); }
+  .modal-input::placeholder{ color: var(--placeholder); }
+  .field-label{ display:block; font-size:12.5px; font-weight:600; color:var(--text-muted); margin:0 0 6px; }
+
+  /* ---------- main layout ---------- */
+  main{
+    flex:1; min-height:0; overflow-y:auto;
+    display:flex; flex-direction:column;
+    padding:18px 20px 28px;
+    gap:14px;
+    max-width:1100px; width:100%; margin:0 auto;
+  }
+  .card{
+    background: var(--panel);
+    border:1px solid var(--border);
+    border-radius:12px;
+    padding:18px 20px;
+  }
+  .card h2{ margin:0 0 4px; font-size:15px; }
+  .card p.hint{ margin:0 0 12px; font-size:12.5px; color:var(--text-muted); line-height:1.5; }
+
+  /* ---------- url bar ---------- */
+  .url-row{ display:flex; gap:10px; }
+  .url-row .modal-input{ margin-bottom:0; flex:1; min-width:0; }
+  .url-row button{ flex-shrink:0; min-height:42px; }
+
+  #pastePanel textarea{
+    width:100%; min-height:120px; resize:vertical;
+    background: var(--panel-2); border:1px solid var(--border); color:var(--text);
+    border-radius:6px; padding:8px 10px; font-size:12px; font-family:'JetBrains Mono', monospace;
+    box-sizing:border-box; margin-bottom:10px;
+  }
+  #pastePanel .row{ display:flex; gap:10px; justify-content:flex-end; }
+
+  /* ---------- selection toolbar ---------- */
+  #toolbar{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+  #toolbar .count{ font-size:13px; color:var(--text-muted); margin-left:auto; }
+  #toolbar .count strong{ color:var(--gold); }
+
+  /* ---------- image grid ---------- */
+  #grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fill, minmax(140px, 1fr));
+    gap:12px;
+  }
+  .tile{
+    position:relative;
+    border:1px solid var(--border);
+    border-radius:8px;
+    overflow:hidden;
+    background: var(--panel);
+    cursor:pointer;
+    transition: opacity .15s ease, border-color .15s ease;
+  }
+  .tile:hover{ border-color: var(--hover-border); }
+  .tile.kept{ border-color: var(--gold-dim); }
+  .tile.dropped{ opacity:.4; }
+  .tile .thumb{
+    width:100%; height:140px; object-fit:cover; display:block;
+    background: var(--panel-2);
+  }
+  .tile .thumb-failed{
+    width:100%; height:140px; display:flex; align-items:center; justify-content:center;
+    background: var(--panel-2); color:var(--text-muted); font-size:11.5px; text-align:center;
+    padding:8px; line-height:1.4;
+  }
+  .tile input[type="checkbox"]{
+    position:absolute; top:8px; left:8px;
+    width:20px; height:20px; margin:0;
+    accent-color: var(--gold); cursor:pointer;
+    filter: drop-shadow(0 1px 2px rgba(0,0,0,.6));
+  }
+  .tile .cap{
+    font-size:10.5px; color:var(--text-muted);
+    padding:6px 8px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+    font-family:'JetBrains Mono', monospace;
+    border-top:1px solid var(--border);
+  }
+  .empty-note{
+    text-align:center; color:var(--text-muted); font-size:13px;
+    padding:34px 16px; border:1px dashed var(--border); border-radius:12px;
+    line-height:1.6;
+  }
+  .spinner-row{ display:flex; align-items:center; justify-content:center; gap:10px; padding:30px; color:var(--text-muted); font-size:13px; }
+  .spinner{
+    width:20px; height:20px; border-radius:50%;
+    border:2px solid var(--border); border-top-color: var(--gold);
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin{ to{ transform:rotate(360deg); } }
+
+  /* ---------- save bar ---------- */
+  .save-grid{ display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end; }
+  .save-grid .field{ flex:1 1 220px; min-width:0; }
+  .save-grid .field .modal-input{ margin-bottom:0; }
+  .save-grid button{ min-height:42px; }
+  #willSaveTo{ font-size:12.5px; color:var(--text-muted); margin-top:10px; }
+  #willSaveTo strong{ color:var(--gold); font-family:'JetBrains Mono', monospace; font-weight:500; }
+  #progressWrap{ margin-top:12px; display:none; }
+  #progressWrap .bar{
+    height:8px; border-radius:4px; background: var(--panel-2);
+    border:1px solid var(--border); overflow:hidden;
+  }
+  #progressWrap .bar i{
+    display:block; height:100%; width:0%;
+    background: var(--gold); transition: width .2s ease;
+  }
+  #progressLabel{ font-size:12.5px; color:var(--text-muted); margin-top:6px; }
+  #failedList{ margin-top:10px; font-size:12.5px; color:var(--text-muted); display:none; }
+  #failedList ul{ margin:6px 0 0; padding-left:18px; }
+  #failedList a{ color:var(--gold); word-break:break-all; }
+
+  /* ---------- modals (reused from SetBook) ---------- */
+  .modal-overlay{
+    display:none; position:fixed; inset:0; background:rgba(0,0,0,.55);
+    align-items:center; justify-content:center; z-index:100;
+  }
+  .modal-overlay.open{ display:flex; }
+  .modal{
+    background: var(--panel); border:1px solid var(--border); border-radius:12px;
+    padding: 24px 26px; width: 380px; max-width:90vw;
+    max-height: 88vh; overflow-y:auto;
+    box-shadow: 0 20px 50px rgba(0,0,0,.5);
+    position:relative;
+  }
+  .modal h2{ margin:0 0 6px; font-size:17px; padding-right:52px; }
+  .modal-sub{ color:var(--text-muted); font-size:12.5px; margin:0 0 8px; padding-right:52px; line-height:1.5; }
+  .modal-close-wrap{ position:sticky; top:6px; z-index:5; height:0; text-align:right; }
+  .modal-close{
+    display:inline-flex; align-items:center; justify-content:center;
+    width:44px; height:44px; border-radius:50%;
+    background:transparent; border:none; color:var(--text-muted); cursor:pointer;
+    margin:-12px -14px 0 0;
+  }
+  .modal-close:hover{ color:var(--text); background:var(--hover-bg); }
+  .modal-actions{ display:flex; justify-content:flex-end; gap:8px; margin-top:14px; }
+
+  /* ---------- configuration rows (reused from SetBook) ---------- */
+  .config-row{ display:flex; align-items:center; gap:14px; padding:12px 2px; border-bottom:1px solid var(--border); }
+  .config-row:has(+ .modal-actions){ border-bottom:0; }
+  .config-text{ flex:1; min-width:0; display:block; }
+  .config-name{ font-size:13.5px; font-weight:600; display:block; }
+  .config-desc{ font-size:12px; color:var(--text-muted); margin-top:2px; display:block; line-height:1.5; }
+  label.config-row{ cursor:pointer; }
+  .config-check{ width:18px; height:18px; accent-color:var(--gold); flex-shrink:0; cursor:pointer; }
+  .mode-toggle{ display:flex; gap:8px; flex-shrink:0; }
+  .mode-btn{
+    flex:1; padding:9px 14px; border-radius:6px; text-align:center; font-size:13px;
+    background: var(--panel-2); border:1px solid var(--border); color: var(--text-muted);
+  }
+  .mode-btn.active{ border-color: var(--gold); color: var(--gold); background: var(--gold-tint); }
+
+  /* ---------- help modal (reused from SetBook) ---------- */
+  .modal-help{ width:640px; }
+  .help-content{ font-size:13px; line-height:1.55; color:var(--text-muted); margin-top:10px; }
+  .help-content h3{ font-size:14px; color:var(--text); margin:18px 0 8px; }
+  .help-content h3:first-child{ margin-top:0; }
+  .help-content p{ margin:0 0 10px; }
+  .help-content ul{ margin:0 0 10px; padding-left:20px; }
+  .help-content li{ margin-bottom:6px; }
+  .help-content strong{ color:var(--text); }
+  .help-content code{
+    font-family:'JetBrains Mono', monospace; font-size:12px;
+    background:var(--panel-2); border:1px solid var(--border);
+    border-radius:4px; padding:1px 5px; color:var(--text);
+  }
+
+  /* ---------- toasts (reused from SetBook) ---------- */
+  .toast-container{
+    position:fixed; top:18px; right:18px; z-index:400;
+    display:flex; flex-direction:column; gap:8px; max-width:320px;
+  }
+  .toast{
+    background: var(--panel-2); border:1px solid var(--border); border-radius:8px;
+    padding:11px 13px; font-size:13px; color: var(--text); line-height:1.4;
+    display:flex; align-items:center; gap:10px;
+    box-shadow: 0 10px 28px rgba(0,0,0,.45);
+  }
+  .toast.error{ border-color: var(--danger); }
+
+  /* ---------- mobile ---------- */
+  @media (max-width: 640px){
+    header{ padding:10px 12px; }
+    header .actions .ghost.small{ padding:8px 12px; min-height:44px; font-size:13px; }
+    .brand small{ display:none; }
+    main{ padding:14px 12px 24px; }
+    .url-row{ flex-direction:column; }
+    .url-row button{ width:100%; }
+    #grid{ grid-template-columns:repeat(auto-fill, minmax(110px, 1fr)); gap:10px; }
+    .tile .thumb, .tile .thumb-failed{ height:110px; }
+    .save-grid{ flex-direction:column; align-items:stretch; }
+    .save-grid .field{ flex-basis:auto; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <h1>Comic<span>Saver</span></h1>
+    <small>batch image saver</small>
+  </div>
+  <div class="actions">
+    <button type="button" class="ghost small" id="btnConfig">Configuration</button>
+    <button type="button" class="ghost small" id="btnHelp">Help</button>
+  </div>
+</header>
+
+<main>
+  <section class="card" id="urlCard">
+    <h2>1 · Load a page</h2>
+    <p class="hint">Paste the URL of a page and ComicSaver will list every image it can find on it.</p>
+    <div class="url-row">
+      <input id="urlInput" class="modal-input" type="url" inputmode="url" placeholder="https://example.com/comic/chapter-1" aria-label="Page URL">
+      <button type="button" class="primary" id="btnLoad">Load images</button>
+    </div>
+  </section>
+
+  <section class="card" id="pastePanel" hidden>
+    <h2>Couldn't fetch that page directly</h2>
+    <p class="hint">Some sites block other pages from reading them (CORS). As a workaround: open the page in your browser, press <strong>Ctrl/Cmd+U</strong> to view its source, copy it, and paste it below. ComicSaver will extract the images from the pasted HTML.</p>
+    <textarea id="pasteHtml" placeholder="&lt;!DOCTYPE html&gt; … paste the page source here …" aria-label="Pasted page HTML"></textarea>
+    <div class="row">
+      <button type="button" class="ghost" id="btnPasteCancel">Cancel</button>
+      <button type="button" class="primary" id="btnParsePasted">Extract images</button>
+    </div>
+  </section>
+
+  <section class="card" id="selectCard" hidden>
+    <h2>2 · Choose images</h2>
+    <p class="hint">Everything is selected by default. Click a thumbnail (or its checkbox) to drop the ones you don't want.</p>
+    <div id="toolbar">
+      <button type="button" class="ghost small" id="btnSelectAll">Select all</button>
+      <button type="button" class="ghost small" id="btnSelectNone">Select none</button>
+      <span class="count" id="selCount"></span>
+    </div>
+    <div id="grid" style="margin-top:12px"></div>
+  </section>
+
+  <section class="card" id="saveCard" hidden>
+    <h2>3 · Save to a folder</h2>
+    <p class="hint">Each batch goes into its own new folder. Name it, or leave it blank and ComicSaver will take the last folder name and bump any number at its end.</p>
+    <div class="save-grid">
+      <div class="field">
+        <label class="field-label" for="folderInput">Folder name <span style="font-weight:400">(optional)</span></label>
+        <input id="folderInput" class="modal-input" type="text" autocomplete="off" spellcheck="false" aria-label="Folder name">
+      </div>
+      <button type="button" class="primary" id="btnDownload">Download images</button>
+    </div>
+    <div id="willSaveTo"></div>
+    <div id="progressWrap">
+      <div class="bar"><i id="progressBar"></i></div>
+      <div id="progressLabel"></div>
+    </div>
+    <div id="failedList"></div>
+  </section>
+</main>
+
+<!-- Configuration modal -->
+<div class="modal-overlay" id="configOverlay">
+  <div class="modal">
+    <div class="modal-close-wrap"><button type="button" class="modal-close" data-close aria-label="Close dialog"><svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M3 3l10 10M13 3L3 13" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/></svg></button></div>
+    <h2>Configuration</h2>
+    <p class="modal-sub">Appearance and saving preferences.</p>
+    <div class="config-row">
+      <div class="config-text">
+        <div class="config-name">Appearance</div>
+        <div class="config-desc">Dark or light theme. Saved on this device.</div>
+      </div>
+      <div class="mode-toggle" id="configThemeToggle">
+        <button type="button" class="mode-btn" data-theme-choice="dark">Dark</button>
+        <button type="button" class="mode-btn" data-theme-choice="light">Light</button>
+      </div>
+    </div>
+    <label class="config-row">
+      <span class="config-text">
+        <span class="config-name">Collect linked images</span>
+        <span class="config-desc">Also pick up images that pages link to (for example, thumbnails that link to full-size files). Saved on this device.</span>
+      </span>
+      <input type="checkbox" class="config-check" id="configLinked" aria-label="Collect linked images">
+    </label>
+    <div class="config-row">
+      <div class="config-text">
+        <div class="config-name">Ask where to save, every time</div>
+        <div class="config-desc">When supported, show the folder picker on every download instead of reusing the folder you picked before. Saved on this device.</div>
+      </div>
+      <div class="mode-toggle" id="configPickerToggle">
+        <button type="button" class="mode-btn" data-picker-choice="every">Every time</button>
+        <button type="button" class="mode-btn" data-picker-choice="reuse">Reuse</button>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button type="button" class="primary small" data-close>Done</button>
+    </div>
+  </div>
+</div>
+
+<!-- Help modal -->
+<div class="modal-overlay" id="helpOverlay">
+  <div class="modal modal-help">
+    <div class="modal-close-wrap"><button type="button" class="modal-close" data-close aria-label="Close dialog"><svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M3 3l10 10M13 3L3 13" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/></svg></button></div>
+    <h2>ComicSaver help</h2>
+    <div class="help-content">
+      <h3>What it does</h3>
+      <p>ComicSaver takes the URL of a page, lists every image on it as thumbnails, lets you drop the ones you don't want, then saves the rest into a brand-new folder — one folder per batch.</p>
+      <h3>The three steps</h3>
+      <ul>
+        <li><strong>Load a page.</strong> Paste a URL and press <em>Load images</em>. ComicSaver reads the page and pulls out its images: <code>&lt;img&gt;</code> tags (including <code>srcset</code> and lazy-load attributes), <code>&lt;picture&gt;</code> sources, and — if enabled in Configuration — links that point at image files.</li>
+        <li><strong>Choose images.</strong> Everything starts selected. Click a thumbnail or its checkbox to deselect it. <em>Select all</em> / <em>Select none</em> are there for big batches.</li>
+        <li><strong>Save to a folder.</strong> Type a folder name, or leave it blank: ComicSaver takes the name you used last time and increments any number at its end (e.g. <code>Chapter 3</code> → <code>Chapter 4</code>). The first batch ever is called <code>batch-1</code>.</li>
+      </ul>
+      <h3>Where the files go</h3>
+      <ul>
+        <li>In Chrome and Edge you'll be asked to pick a folder once; each batch then becomes a new subfolder inside it.</li>
+        <li>Other browsers save into your normal Downloads folder, with every file named <code>&lt;folder&gt;_&lt;file&gt;</code> (browsers don't let a page create subfolders there) so each batch stays grouped together.</li>
+      </ul>
+      <h3>Why some pages won't load</h3>
+      <p>Browsers only let a page read another site's content if that site allows it (CORS). Many sites don't. When a page can't be fetched directly, ComicSaver offers the paste-source workaround: view the page's source (<strong>Ctrl/Cmd+U</strong>), copy it, and paste it in. Image downloads can also fail for individual files on sites that block hotlinking — those are listed after the batch so you can grab them by hand.</p>
+    </div>
+    <div class="modal-actions">
+      <button type="button" class="primary small" data-close>Done</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast-container" id="toasts"></div>
+
+<script>
+"use strict";
+/* Build flag: flipped to true by the QA deploy script for the QA site. */
+const IS_QA = false;
+
+/* ================= helpers ================= */
+const $ = (id) => document.getElementById(id);
+const LS = {
+  theme: 'comicsaver-theme',
+  lastFolder: 'comicsaver-last-folder',
+  linked: 'comicsaver-linked-images',
+  picker: 'comicsaver-picker-mode',
+};
+const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+
+function toast(msg, isErr){
+  const el = document.createElement('div');
+  el.className = 'toast' + (isErr ? ' error' : '');
+  el.textContent = msg;
+  $('toasts').appendChild(el);
+  setTimeout(() => {
+    el.style.transition = 'opacity .4s'; el.style.opacity = '0';
+    setTimeout(() => el.remove(), 450);
+  }, 4200);
+}
+
+/* ================= QA badge (flipped on by the QA deploy script) ================= */
+if (IS_QA){
+  document.title += ' — QA';
+  const b = document.createElement('span');
+  b.className = 'qa-badge'; b.textContent = 'QA';
+  document.querySelector('.brand').appendChild(b);
+}
+
+/* ================= modals ================= */
+function closeOverlays(){
+  document.querySelectorAll('.modal-overlay.open').forEach(o => o.classList.remove('open'));
+}
+document.querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', closeOverlays));
+document.querySelectorAll('.modal-overlay').forEach(o =>
+  o.addEventListener('click', e => { if (e.target === o) closeOverlays(); }));
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeOverlays(); });
+$('btnConfig').addEventListener('click', () => $('configOverlay').classList.add('open'));
+$('btnHelp').addEventListener('click', () => $('helpOverlay').classList.add('open'));
+
+/* ================= configuration ================= */
+function syncThemeButtons(){
+  const cur = localStorage.getItem(LS.theme) || 'dark';
+  document.querySelectorAll('#configThemeToggle .mode-btn').forEach(b =>
+    b.classList.toggle('active', b.dataset.themeChoice === cur));
+}
+function applyTheme(t){
+  document.documentElement.setAttribute('data-theme', t === 'light' ? 'light' : 'dark');
+  localStorage.setItem(LS.theme, t);
+  syncThemeButtons();
+}
+document.querySelectorAll('#configThemeToggle .mode-btn').forEach(b =>
+  b.addEventListener('click', () => applyTheme(b.dataset.themeChoice)));
+
+$('configLinked').checked = localStorage.getItem(LS.linked) === '1';
+$('configLinked').addEventListener('change', e =>
+  localStorage.setItem(LS.linked, e.target.checked ? '1' : '0'));
+
+function syncPickerButtons(){
+  const cur = localStorage.getItem(LS.picker) || 'reuse';
+  document.querySelectorAll('#configPickerToggle .mode-btn').forEach(b =>
+    b.classList.toggle('active', b.dataset.pickerChoice === cur));
+}
+document.querySelectorAll('#configPickerToggle .mode-btn').forEach(b =>
+  b.addEventListener('click', () => {
+    localStorage.setItem(LS.picker, b.dataset.pickerChoice);
+    syncPickerButtons();
+  }));
+
+/* ================= loading a page ================= */
+const state = { images: [], baseUrl: '', dirHandle: null, downloading: false };
+
+function normalizeUrl(raw){
+  raw = (raw || '').trim();
+  if (!raw) return '';
+  if (!/^[a-z][a-z0-9+.-]*:\/\//i.test(raw)) raw = 'https://' + raw;
+  return raw;
+}
+function setLoading(on){
+  $('selectCard').hidden = false;
+  $('saveCard').hidden = true;
+  $('selCount').textContent = '';
+  $('grid').innerHTML = on
+    ? '<div class="spinner-row"><div class="spinner"></div>Loading images…</div>'
+    : '';
+}
+async function loadFromUrl(){
+  const url = normalizeUrl($('urlInput').value);
+  if (!url){ toast('Paste a page URL first.', true); return; }
+  $('urlInput').value = url;
+  $('pastePanel').hidden = true;
+  setLoading(true);
+  try{
+    const res = await fetch(url, { mode: 'cors', credentials: 'omit', redirect: 'follow' });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const html = await res.text();
+    if (!/^\s*</.test(html)) throw new Error('not-html');
+    ingest(html, res.url || url);
+  }catch(err){
+    setLoading(false);
+    $('selectCard').hidden = true;
+    $('pastePanel').hidden = false;
+    $('pasteHtml').value = '';
+    toast('That page blocks direct reading (CORS). Paste its source below instead.', true);
+  }
+}
+$('btnLoad').addEventListener('click', loadFromUrl);
+$('urlInput').addEventListener('keydown', e => { if (e.key === 'Enter') loadFromUrl(); });
+$('btnPasteCancel').addEventListener('click', () => { $('pastePanel').hidden = true; });
+$('btnParsePasted').addEventListener('click', () => {
+  const html = $('pasteHtml').value;
+  if (!html.trim()){ toast('Paste the page source first.', true); return; }
+  const base = normalizeUrl($('urlInput').value) || location.href;
+  ingest(html, base);
+});
+
+/* ================= image extraction ================= */
+function pickLargestSrcset(ss){
+  let best = null, bestScore = -1;
+  for (const part of ss.split(',')){
+    const tokens = part.trim().split(/\s+/).filter(Boolean);
+    if (!tokens.length) continue;
+    const u = tokens[0], d = tokens[1] || '';
+    let score = 0;
+    const mw = d.match(/^(\d+)w$/), mx = d.match(/^([\d.]+)x$/);
+    if (mw) score = +mw[1];
+    else if (mx) score = +mx[1] * 100000;
+    if (score >= bestScore){ bestScore = score; best = u; }
+  }
+  return best;
+}
+const LAZY_ATTRS = ['data-src','data-srcset','data-lazy-src','data-lazy-srcset',
+  'data-original','data-fullsrc','data-image','data-hi-res-src','data-zoom-src'];
+const IMG_EXT = /\.(jpe?g|png|gif|webp|avif|bmp|svg)(\?|#|$)/i;
+
+function extractImages(html, base){
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  const seen = new Set(), out = [];
+  const push = (u) => {
+    if (!u) return;
+    u = u.trim();
+    if (!u || u.startsWith('#') || /^javascript:/i.test(u)) return;
+    let abs;
+    try{ abs = new URL(u, base).href; }catch(e){ return; }
+    if (abs.startsWith('data:') && !abs.startsWith('data:image/')) return;
+    if (seen.has(abs)) return;
+    seen.add(abs);
+    out.push(abs);
+  };
+  doc.querySelectorAll('img').forEach(img => {
+    push(img.getAttribute('src'));
+    const ss = img.getAttribute('srcset');
+    if (ss) push(pickLargestSrcset(ss));
+    for (const a of LAZY_ATTRS){
+      const v = img.getAttribute(a);
+      if (v) push(/srcset/i.test(a) ? pickLargestSrcset(v) : v);
+    }
+  });
+  doc.querySelectorAll('picture source[srcset], source[srcset]').forEach(s =>
+    push(pickLargestSrcset(s.getAttribute('srcset'))));
+  if (localStorage.getItem(LS.linked) === '1'){
+    doc.querySelectorAll('a[href]').forEach(a => {
+      const h = a.getAttribute('href');
+      if (h && IMG_EXT.test(h)) push(h);
+    });
+  }
+  return out;
+}
+
+/* ================= grid + selection ================= */
+function shortName(url){
+  if (url.startsWith('data:')) return 'embedded image';
+  try{
+    const p = new URL(url).pathname;
+    const n = decodeURIComponent(p.split('/').pop() || '');
+    return n || url;
+  }catch(e){ return url; }
+}
+function ingest(html, base){
+  setLoading(false);
+  const urls = extractImages(html, base);
+  state.images = urls.map((url, i) => ({ url, kept: true, id: i }));
+  state.baseUrl = base;
+  $('pastePanel').hidden = true;
+  $('selectCard').hidden = false;
+  $('saveCard').hidden = false;
+  renderGrid();
+  updateCount();
+  updateWillSaveTo();
+  $('selectCard').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  toast(urls.length
+    ? `Found ${urls.length} image${urls.length === 1 ? '' : 's'} — all selected.`
+    : 'No images found on that page.', !urls.length);
+}
+function renderGrid(){
+  const grid = $('grid');
+  grid.innerHTML = '';
+  if (!state.images.length){
+    grid.innerHTML = '<div class="empty-note">No images found. Try another page — or paste the page source if the site blocks direct fetching.</div>';
+    return;
+  }
+  for (const img of state.images){
+    const label = document.createElement('label');
+    label.className = 'tile kept';
+    label.title = img.url;
+    const cb = document.createElement('input');
+    cb.type = 'checkbox'; cb.checked = true;
+    cb.setAttribute('aria-label', 'Keep this image');
+    cb.addEventListener('change', () => {
+      img.kept = cb.checked;
+      label.classList.toggle('kept', cb.checked);
+      label.classList.toggle('dropped', !cb.checked);
+      updateCount();
+    });
+    const im = document.createElement('img');
+    im.className = 'thumb'; im.loading = 'lazy'; im.alt = '';
+    im.addEventListener('error', () => {
+      const d = document.createElement('div');
+      d.className = 'thumb-failed';
+      d.textContent = 'Preview unavailable — the file may still download.';
+      im.replaceWith(d);
+    });
+    im.src = img.url;
+    const cap = document.createElement('div');
+    cap.className = 'cap'; cap.textContent = shortName(img.url);
+    label.append(cb, im, cap);
+    grid.appendChild(label);
+  }
+}
+function setAll(kept){
+  state.images.forEach(i => i.kept = kept);
+  document.querySelectorAll('#grid .tile').forEach(t => {
+    t.classList.toggle('kept', kept);
+    t.classList.toggle('dropped', !kept);
+    t.querySelector('input').checked = kept;
+  });
+  updateCount();
+}
+$('btnSelectAll').addEventListener('click', () => setAll(true));
+$('btnSelectNone').addEventListener('click', () => setAll(false));
+function updateCount(){
+  const kept = state.images.filter(i => i.kept).length;
+  $('selCount').innerHTML = `<strong>${kept}</strong> of ${state.images.length} selected`;
+  $('btnDownload').disabled = kept === 0 || state.downloading;
+}
+
+/* ================= folder naming ================= */
+function lastFolder(){ return localStorage.getItem(LS.lastFolder) || ''; }
+function suggestFolderName(){
+  const last = lastFolder();
+  if (!last) return 'batch-1';
+  const m = last.match(/^(.*?)(\d+)$/);
+  if (m) return m[1] + (parseInt(m[2], 10) + 1);
+  return last + ' 2';
+}
+function resolveFolderName(){
+  let name = $('folderInput').value.trim() || suggestFolderName();
+  if (IS_QA) name += ' QA';
+  return name;
+}
+function updateWillSaveTo(){
+  const suggestion = suggestFolderName();
+  $('folderInput').placeholder = 'e.g. ' + suggestion;
+  const strong = document.createElement('strong');
+  strong.textContent = resolveFolderName();
+  $('willSaveTo').textContent = 'Will save to: ';
+  $('willSaveTo').appendChild(strong);
+}
+$('folderInput').addEventListener('input', updateWillSaveTo);
+
+/* ================= downloading ================= */
+function fileNameFor(url, i, taken){
+  let name;
+  if (url.startsWith('data:')){
+    const m = url.match(/^data:image\/([a-z0-9+]+)/i);
+    let ext = ((m && m[1]) || 'png').toLowerCase().replace('jpeg', 'jpg');
+    if (ext === 'svg+xml') ext = 'svg';
+    name = `image-${i + 1}.${ext}`;
+  }else{
+    try{
+      const p = new URL(url).pathname;
+      name = decodeURIComponent(p.substring(p.lastIndexOf('/') + 1)) || `image-${i + 1}`;
+    }catch(e){ name = `image-${i + 1}`; }
+    name = name.split(/[?#]/)[0].replace(/[\\/:*?"<>|]/g, '_').trim() || `image-${i + 1}`;
+    if (!/\.[a-z0-9]{2,5}$/i.test(name)) name += '.jpg';
+  }
+  let base = name, n = 1;
+  while (taken.has(base.toLowerCase())){
+    n++;
+    const dot = name.lastIndexOf('.');
+    base = name.slice(0, dot) + '-' + n + name.slice(dot);
+  }
+  taken.add(base.toLowerCase());
+  return base;
+}
+function dataUriToBlob(uri){
+  const comma = uri.indexOf(',');
+  const head = uri.slice(0, comma), data = uri.slice(comma + 1);
+  const mime = (head.match(/data:([^;]+)/) || [])[1] || 'image/png';
+  const bin = atob(data);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return new Blob([bytes], { type: mime });
+}
+async function fetchImageBlob(url){
+  if (url.startsWith('data:')) return dataUriToBlob(url);
+  const res = await fetch(url, { mode: 'cors', credentials: 'omit' });
+  if (!res.ok) throw new Error('HTTP ' + res.status);
+  return await res.blob();
+}
+function triggerAnchorDownload(href, path){
+  const a = document.createElement('a');
+  a.href = href; a.download = path;
+  document.body.appendChild(a); a.click(); a.remove();
+}
+async function getDirHandle(){
+  const reuse = (localStorage.getItem(LS.picker) || 'reuse') !== 'every';
+  if (state.dirHandle && reuse){
+    try{
+      if (await state.dirHandle.queryPermission({ mode: 'readwrite' }) === 'granted')
+        return state.dirHandle;
+    }catch(e){ /* fall through to picker */ }
+  }
+  if (typeof window.showDirectoryPicker !== 'function') return null;
+  try{
+    state.dirHandle = await window.showDirectoryPicker({ id: 'comicsaver', mode: 'readwrite' });
+    return state.dirHandle;
+  }catch(e){ return 'denied'; } /* user cancelled */
+}
+function resetDownloadUI(){
+  state.downloading = false;
+  setTimeout(() => {
+    $('progressWrap').style.display = 'none';
+    $('progressBar').style.width = '0%';
+    $('progressLabel').textContent = '';
+    updateCount();
+  }, 600);
+  updateWillSaveTo();
+}
+async function downloadBatch(){
+  if (state.downloading) return;
+  const kept = state.images.filter(i => i.kept);
+  if (!kept.length){ toast('Nothing selected.', true); return; }
+  const folder = resolveFolderName();
+  /* Capture the user-facing name now (without any QA stamp): the input may
+     change while the batch is downloading, and the stored name must be the
+     one this batch actually used. */
+  const folderBase = $('folderInput').value.trim() || suggestFolderName();
+  state.downloading = true;
+  $('btnDownload').disabled = true;
+  $('progressWrap').style.display = 'block';
+  $('failedList').style.display = 'none';
+  $('failedList').innerHTML = '';
+
+  const dir = await getDirHandle();
+  if (dir === 'denied'){ resetDownloadUI(); toast('Folder picker was cancelled.', true); return; }
+  let sub = null;
+  const useFs = !!dir;
+  if (useFs){
+    try{ sub = await dir.getDirectoryHandle(folder, { create: true }); }
+    catch(e){ resetDownloadUI(); toast('Could not create the folder: ' + e.message, true); return; }
+  }else{
+    toast('This browser has no folder picker — files will save into your Downloads folder, each named “' + folder + '_…”, so the batch stays grouped.');
+  }
+
+  const taken = new Set();
+  const failed = [];
+  let saved = 0, unverified = 0;
+  for (let k = 0; k < kept.length; k++){
+    const img = kept[k];
+    const fname = fileNameFor(img.url, k, taken);
+    $('progressLabel').textContent = `Saving ${k + 1} of ${kept.length} — ${fname}`;
+    try{
+      const blob = await fetchImageBlob(img.url);
+      if (useFs){
+        const fh = await sub.getFileHandle(fname, { create: true });
+        const w = await fh.createWritable();
+        await w.write(blob);
+        await w.close();
+      }else{
+        /* Anchor downloads can't create subfolders (browsers flatten any "/"
+           in the download name), so prefix each file with the folder name to
+           keep the batch grouped in the Downloads folder. */
+        const objUrl = URL.createObjectURL(blob);
+        triggerAnchorDownload(objUrl, folder + '_' + fname);
+        await sleep(300);
+        URL.revokeObjectURL(objUrl);
+      }
+      saved++;
+    }catch(e){
+      if (!useFs){
+        /* Last resort: a plain download of the URL needs no CORS (Chrome/Edge honor it). */
+        triggerAnchorDownload(img.url, folder + '_' + fname);
+        await sleep(300);
+        unverified++;
+      }else{
+        failed.push({ url: img.url, name: fname });
+      }
+    }
+    $('progressBar').style.width = Math.round(((k + 1) / kept.length) * 100) + '%';
+  }
+
+  /* Remember the name for next batch's suggestion (without the QA stamp). */
+  localStorage.setItem(LS.lastFolder, folderBase);
+  $('folderInput').value = '';
+
+  if (failed.length){
+    const fl = $('failedList');
+    fl.style.display = 'block';
+    const p = document.createElement('div');
+    p.innerHTML = `<strong style="color:var(--text)">${failed.length} file${failed.length === 1 ? '' : 's'} couldn't be downloaded</strong> (the site likely blocks cross-origin reads — open each link to save it by hand):`;
+    const ul = document.createElement('ul');
+    for (const f of failed){
+      const li = document.createElement('li');
+      const a = document.createElement('a');
+      a.href = f.url; a.target = '_blank'; a.rel = 'noopener';
+      a.textContent = f.name;
+      li.appendChild(a);
+      ul.appendChild(li);
+    }
+    fl.append(p, ul);
+  }
+  resetDownloadUI();
+  const where = useFs ? `into “${folder}”` : `into your Downloads folder as “${folder}_…” files`;
+  let msg = `Saved ${saved} image${saved === 1 ? '' : 's'} ${where}.`;
+  if (unverified) msg += ` ${unverified} more were sent to the browser directly (couldn't verify).`;
+  if (failed.length) msg += ` ${failed.length} failed — see the list below.`;
+  toast(msg, failed.length > 0);
+}
+$('btnDownload').addEventListener('click', downloadBatch);
+
+/* ================= init ================= */
+applyTheme(localStorage.getItem(LS.theme) || 'dark');
+syncPickerButtons();
+updateWillSaveTo();
+</script>
+</body>
+</html>
