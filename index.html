@@ -4,71 +4,51 @@
 <meta charset="UTF-8">
 <meta name="robots" content="noindex,nofollow">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>ComicSaver</title>
+<title>ComicSaver — batch image saver</title>
+<meta name="description" content="ComicSaver is a Chrome extension that saves every image from a comic page in one batch.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Work+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Work+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
-  /* ---------- theme tokens (reused from SetBook) ---------- */
+  /* ---------- theme tokens (reused from ComicSaver) ---------- */
   :root{
     --bg: #1b1b1e;
     --panel: #232327;
     --panel-2: #29292e;
     --gold: #c9a227;
-    --gold-dim: #8a7220;
     --gold-hover: #d9b12c;
-    --gold-tint: #2f2a1c;
-    --gold-tint-strong: #3a3320;
     --text: #ede9e1;
     --text-muted: #9c9890;
-    --placeholder: #7d7a76;
     --border: #38383d;
     --hover-bg: #2d2d33;
     --hover-border: #55555c;
-    --focus-border: #6b6b73;
-    --danger: #b1503f;
-    --on-gold-text: #1b1b1e;
-    --success: #6fae6a;
-    --scrollbar-thumb: #3a3a3f;
     --brand-green: #a3e3b2;
+    --on-gold-text: #1b1b1e;
   }
   [data-theme="light"]{
     --bg: #f6f5f0;
     --panel: #ffffff;
     --panel-2: #eeece3;
     --gold: #8a6a10;
-    --gold-dim: #b08f4a;
     --gold-hover: #74590c;
-    --gold-tint: #f6eed7;
-    --gold-tint-strong: #ecdfb3;
     --text: #29271f;
     --text-muted: #746f62;
-    --placeholder: #8a8474;
     --border: #e1ddd0;
     --hover-bg: #efece2;
     --hover-border: #c9c3b2;
-    --focus-border: #a39c8a;
-    --danger: #a4402f;
-    --on-gold-text: #ffffff;
-    --success: #4a9350;
-    --scrollbar-thumb: #ddd7c6;
     --brand-green: #1d6b38;
+    --on-gold-text: #ffffff;
   }
   *{ box-sizing: border-box; }
-  html,body{ height:100%; }
   body{
     margin:0;
     background: var(--bg);
     color: var(--text);
     font-family: 'Work Sans', -apple-system, 'Segoe UI', sans-serif;
+    min-height:100vh;
     display:flex;
     flex-direction:column;
-    height:100vh;
-    overflow:hidden;
   }
-  .mono{ font-family:'JetBrains Mono', ui-monospace, monospace; }
-
-  /* ---------- top bar (reused from SetBook) ---------- */
   header{
     display:flex;
     align-items:center;
@@ -76,23 +56,58 @@
     padding: 14px 20px;
     border-bottom:1px solid var(--border);
     background: var(--panel);
-    flex-shrink:0;
     gap:10px;
   }
-  .brand{ display:flex; align-items:center; gap:10px; min-width:0; }
-  .brand h1{ font-size:19px; margin:0; font-weight:700; letter-spacing:.2px; white-space:nowrap; color:var(--brand-green); }
+  .brand{ display:flex; align-items:center; gap:10px; }
+  .brand h1{ font-size:19px; margin:0; font-weight:700; letter-spacing:.2px; color:var(--brand-green); }
   .brand-mark{ width:30px; height:26px; flex-shrink:0; color:var(--brand-green); }
-  .brand small{ color: var(--text-muted); font-size:12px; white-space:nowrap; }
-  .brand .qa-badge{
-    display:inline-flex; align-items:center; flex-shrink:0;
-    font-size:15px; font-weight:800; letter-spacing:2px;
-    color:#fff; background:#c0392b;
-    border-radius:10px; padding:5px 12px 5px 14px;
-    box-shadow:0 0 0 2px rgba(192,57,43,.35);
+  .brand small{ color: var(--text-muted); font-size:12px; }
+  main{
+    flex:1;
+    width:100%;
+    max-width:660px;
+    margin:0 auto;
+    padding:40px 20px 60px;
   }
-  .actions{ display:flex; gap:8px; flex-shrink:0; }
-
-  /* ---------- buttons (reused from SetBook) ---------- */
+  .hero{ text-align:center; margin:28px 0 36px; }
+  .hero-mark{ width:76px; height:62px; color:var(--brand-green); margin-bottom:14px; }
+  .hero h2{ font-size:30px; margin:0 0 10px; font-weight:700; line-height:1.25; }
+  .hero p{ color:var(--text-muted); font-size:16px; margin:0 auto; max-width:480px; line-height:1.55; }
+  .card{
+    background: var(--panel);
+    border:1px solid var(--border);
+    border-radius:12px;
+    padding:22px;
+    margin:0 0 18px;
+  }
+  .card h3{ margin:0 0 12px; font-size:17px; }
+  .card p, .card li{ font-size:14.5px; line-height:1.6; color:var(--text); }
+  .card p{ margin:0 0 10px; }
+  .card p:last-child{ margin-bottom:0; }
+  .card .muted{ color:var(--text-muted); font-size:13.5px; }
+  ol.steps{ margin:0; padding-left:22px; }
+  ol.steps li{ margin-bottom:12px; }
+  ol.steps li:last-child{ margin-bottom:0; }
+  ol.steps code, p code{
+    font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+    font-size:.92em;
+    background: var(--panel-2);
+    border:1px solid var(--border);
+    border-radius:4px;
+    padding:1px 6px;
+  }
+  ul.ticks{ list-style:none; margin:0; padding:0; }
+  ul.ticks li{ padding-left:28px; position:relative; margin-bottom:10px; }
+  ul.ticks li:last-child{ margin-bottom:0; }
+  ul.ticks li::before{
+    content:""; position:absolute; left:2px; top:5px;
+    width:14px; height:8px;
+    border-left:3px solid var(--brand-green);
+    border-bottom:3px solid var(--brand-green);
+    transform: rotate(-45deg);
+  }
+  .dl-zone{ text-align:center; padding:6px 0 2px; }
+  .version-line{ color:var(--text-muted); font-size:13px; margin:0 0 14px; }
   button{
     font-family:inherit;
     font-size:13px;
@@ -108,1314 +123,114 @@
   button:active{ transform: translateY(1px); }
   button:focus-visible{ outline:2px solid var(--gold); outline-offset:2px; }
   button:disabled{ opacity:.45; cursor:not-allowed; }
-  button.primary{
+  button.big-download{
+    font-size:17px;
+    font-weight:700;
+    padding:14px 42px;
+    border-radius:10px;
     background: var(--gold);
     border-color: var(--gold);
     color: var(--on-gold-text);
-    font-weight:600;
+    min-height:52px;
   }
-  button.primary:hover{ background: var(--gold-hover); }
+  button.big-download:hover{ background: var(--gold-hover); border-color: var(--gold-hover); }
   button.ghost{ background:transparent; }
-  button.small{ padding:4px 9px; font-size:12px; }
-  /* ---------- extension update banner ---------- */
-  .update-banner{
-    border:1px solid var(--gold); border-radius:10px;
-    background: color-mix(in srgb, var(--gold) 14%, var(--panel));
-    padding:12px 14px;
-  }
-  .update-banner .update-actions{ display:flex; gap:8px; margin-top:10px; }
-  .update-banner .hint{ margin:8px 0 0; }
-  header .actions .ghost.small{
-    font-size:14px;
-    padding:10px 16px;
-    min-height:42px;
-  }
-
-  /* ---------- inputs (reused from SetBook) ---------- */
-  .modal-input{
-    width:100%; background: var(--panel-2); border:1px solid var(--border); color:var(--text);
-    border-radius:6px; padding:8px 10px; font-size:13.5px; font-family:inherit;
-    box-sizing:border-box; margin-bottom:16px;
-  }
-  .modal-input:focus{ outline:none; border-color: var(--focus-border); }
-  .modal-input::placeholder{ color: var(--placeholder); }
-  .field-label{ display:block; font-size:12.5px; font-weight:600; color:var(--text-muted); margin:0 0 6px; }
-
-  /* ---------- main layout ---------- */
-  main{
-    flex:1; min-height:0; overflow-y:auto;
-    display:flex; flex-direction:column;
-    padding:18px 20px 28px;
-    gap:14px;
-    max-width:1100px; width:100%; margin:0 auto;
-  }
-  .card{
-    background: var(--panel);
-    border:1px solid var(--border);
-    border-radius:10px;
-    padding:18px 20px;
-  }
-  .card h2{ margin:0 0 4px; font-size:15px; }
-  .card p.hint{ margin:0 0 12px; font-size:12.5px; color:var(--text-muted); line-height:1.5; }
-
-  /* ---------- landing: step 1 + ghost steps, vertically centered ---------- */
-  .landing{
-    margin:auto;               /* absorbs free space -> vertical centering when short */
-    width:100%; max-width:640px;
-    display:flex; flex-direction:column; gap:14px;
-    position:relative;
-  }
-  .watermark{
-    position:absolute; top:46%; left:50%;
-    width:300px; height:auto;
-    transform:translate(-50%,-50%);
-    color:var(--text-muted); opacity:.055;
-    pointer-events:none;
-  }
-  .ghost-step{
-    border-style:dashed;
-    opacity:.6;
-    pointer-events:none;
-    user-select:none;
-  }
-  .ghost-step h2{ color:var(--text-muted); }
-  .landing-foot{
-    margin:2px 0 0; text-align:center;
-    font-size:12.5px; color:var(--text-muted);
-  }
-  .empty-art{
-    display:block; width:54px; height:auto;
-    margin:0 auto 12px; color:var(--text-muted); opacity:.75;
-  }
-
-  /* ---------- url bar ---------- */
-  .url-row{ display:flex; gap:10px; }
-  .url-row .modal-input{ margin-bottom:0; flex:1; min-width:0; }
-  .url-row button{ flex-shrink:0; min-height:42px; }
-
-  #pastePanel textarea{
-    width:100%; min-height:120px; resize:vertical;
-    background: var(--panel-2); border:1px solid var(--border); color:var(--text);
-    border-radius:6px; padding:8px 10px; font-size:12px; font-family:'JetBrains Mono', monospace;
-    box-sizing:border-box; margin-bottom:10px;
-  }
-  #pastePanel .row{ display:flex; gap:10px; justify-content:flex-end; }
-
-  /* ---------- selection toolbar ---------- */
-  #toolbar{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
-  #toolbar .count{ font-size:13px; color:var(--text-muted); margin-left:auto; }
-  #toolbar .count strong{ color:var(--gold); }
-
-  /* ---------- image grid ---------- */
-  #grid{
-    display:grid;
-    grid-template-columns:repeat(auto-fill, minmax(140px, 1fr));
-    gap:12px;
-  }
-  .tile{
-    position:relative;
-    border:1px solid var(--border);
-    border-radius:10px;
-    overflow:hidden;
-    background: var(--panel);
-    cursor:pointer;
-    transition: opacity .15s ease, border-color .15s ease;
-  }
-  .tile:hover{ border-color: var(--hover-border); }
-  .tile.kept{ border-color: var(--gold-dim); }
-  .tile.dropped{ opacity:.4; }
-  .tile .thumb{
-    width:100%; height:140px; object-fit:cover; display:block;
-    background: var(--panel-2);
-  }
-  .tile .thumb-failed{
-    width:100%; height:140px; display:flex; align-items:center; justify-content:center;
-    background: var(--panel-2); color:var(--text-muted); font-size:11.5px; text-align:center;
-    padding:8px; line-height:1.4;
-  }
-  .tile input[type="checkbox"]{
-    position:absolute; top:8px; left:8px;
-    width:20px; height:20px; margin:0;
-    accent-color: var(--gold); cursor:pointer;
-    filter: drop-shadow(0 1px 2px rgba(0,0,0,.6));
-  }
-  .tile .cap{
-    font-size:10.5px; color:var(--text-muted);
-    padding:6px 8px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
-    font-family:'JetBrains Mono', monospace;
+  footer{
+    text-align:center;
+    padding:18px 20px 26px;
+    color:var(--text-muted);
+    font-size:12.5px;
     border-top:1px solid var(--border);
   }
-  .empty-note{
-    text-align:center; color:var(--text-muted); font-size:13px;
-    padding:34px 16px; border:1px dashed var(--border); border-radius:10px;
-    line-height:1.6;
-  }
-  .spinner-row{ display:flex; align-items:center; justify-content:center; gap:10px; padding:30px; color:var(--text-muted); font-size:13px; }
-  .spinner{
-    width:20px; height:20px; border-radius:50%;
-    border:2px solid var(--border); border-top-color: var(--gold);
-    animation: spin 0.8s linear infinite;
-  }
-  @keyframes spin{ to{ transform:rotate(360deg); } }
-
-  /* ---------- save bar ---------- */
-  .save-grid{ display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end; }
-  .save-grid .field{ flex:1 1 220px; min-width:0; }
-  .save-grid .field .modal-input{ margin-bottom:0; }
-  .save-grid button{ min-height:42px; }
-  #willSaveTo{ font-size:12.5px; color:var(--text-muted); margin-top:10px; }
-  #willSaveTo strong{ color:var(--gold); font-family:'JetBrains Mono', monospace; font-weight:500; }
-  #progressWrap{ margin-top:12px; display:none; }
-  #progressWrap .bar{
-    height:8px; border-radius:6px; background: var(--panel-2);
-    border:1px solid var(--border); overflow:hidden;
-  }
-  #progressWrap .bar i{
-    display:block; height:100%; width:0%;
-    background: var(--gold); transition: width .2s ease;
-  }
-  #progressLabel{ font-size:12.5px; color:var(--text-muted); margin-top:6px; }
-  #failedList{ margin-top:10px; font-size:12.5px; color:var(--text-muted); display:none; }
-  #failedList ul{ margin:6px 0 0; padding-left:18px; }
-  #failedList a{ color:var(--gold); word-break:break-all; }
-
-  /* ---------- modals (reused from SetBook) ---------- */
-  .modal-overlay{
-    display:none; position:fixed; inset:0; background:rgba(0,0,0,.55);
-    align-items:center; justify-content:center; z-index:100;
-  }
-  .modal-overlay.open{ display:flex; }
-  .modal{
-    background: var(--panel); border:1px solid var(--border); border-radius:10px;
-    padding: 24px 26px; width: 380px; max-width:90vw;
-    max-height: 88vh; overflow-y:auto;
-    box-shadow: 0 20px 50px rgba(0,0,0,.5);
-    position:relative;
-  }
-  .modal h2{ margin:0 0 6px; font-size:17px; padding-right:52px; }
-  .modal-sub{ color:var(--text-muted); font-size:12.5px; margin:0 0 8px; padding-right:52px; line-height:1.5; }
-  .modal-close-wrap{ position:sticky; top:6px; z-index:5; height:0; text-align:right; }
-  .modal-close{
-    display:inline-flex; align-items:center; justify-content:center;
-    width:44px; height:44px; border-radius:50%;
-    background:transparent; border:none; color:var(--text-muted); cursor:pointer;
-    margin:-12px -14px 0 0;
-  }
-  .modal-close:hover{ color:var(--text); background:var(--hover-bg); }
-  .modal-actions{ display:flex; justify-content:flex-end; gap:8px; margin-top:14px; }
-
-  /* ---------- configuration rows (reused from SetBook) ---------- */
-  .config-row{ display:flex; align-items:center; gap:14px; padding:12px 2px; border-bottom:1px solid var(--border); }
-  .config-row:has(+ .modal-actions){ border-bottom:0; }
-  .config-text{ flex:1; min-width:0; display:block; }
-  .config-name{ font-size:13.5px; font-weight:600; display:block; }
-  .config-desc{ font-size:12px; color:var(--text-muted); margin-top:2px; display:block; line-height:1.5; }
-  label.config-row{ cursor:pointer; }
-  .config-check{ width:18px; height:18px; accent-color:var(--gold); flex-shrink:0; cursor:pointer; }
-  .mode-toggle{ display:flex; gap:8px; flex-shrink:0; }
-  .mode-btn{
-    flex:1; padding:9px 14px; border-radius:6px; text-align:center; font-size:13px;
-    background: var(--panel-2); border:1px solid var(--border); color: var(--text-muted);
-  }
-  .mode-btn.active{ border-color: var(--gold); color: var(--gold); background: var(--gold-tint); }
-
-  /* ---------- help modal (reused from SetBook) ---------- */
-  .modal-help{ width:640px; }
-  .modal-docs{ width:760px; }
-  .help-layout{ display:flex; gap:22px; align-items:flex-start; margin-top:14px; }
-  .help-nav{
-    width:168px; flex:none; display:flex; flex-direction:column; gap:2px;
-    position:sticky; top:0; max-height:calc(88vh - 180px); overflow-y:auto;
-  }
-  .help-nav a{
-    font-size:12.5px; color:var(--text-muted); text-decoration:none;
-    padding:5px 8px; border-radius:6px; white-space:nowrap;
-  }
-  .help-nav a:hover{ background:var(--hover-bg); color:var(--text); }
-  .help-content section{ scroll-margin-top:6px; }
-  .help-content section:first-child h3{ margin-top:0; }
-  .update-steps{ margin:14px 0 0; padding-left:24px; display:flex; flex-direction:column; gap:12px; }
-  .update-steps li{ line-height:1.6; }
-  .update-steps li::marker{ color:var(--gold); font-weight:700; }
-  @media (max-width:680px){
-    .help-layout{ flex-direction:column; }
-    .help-nav{ width:100%; flex-direction:row; flex-wrap:wrap; position:static; max-height:none; }
-  }
-  .help-content{ font-size:13px; line-height:1.55; color:var(--text-muted); margin-top:10px; }
-  .help-content h3{ font-size:14px; color:var(--text); margin:18px 0 8px; }
-  .help-content h3:first-child{ margin-top:0; }
-  .help-content p{ margin:0 0 10px; }
-  .help-content ul{ margin:0 0 10px; padding-left:20px; }
-  .help-content li{ margin-bottom:6px; }
-  .help-content strong{ color:var(--text); }
-  .help-content code{
-    font-family:'JetBrains Mono', monospace; font-size:12px;
-    background:var(--panel-2); border:1px solid var(--border);
-    border-radius:6px; padding:1px 5px; color:var(--text);
-  }
-
-  /* ---------- toasts (reused from SetBook) ---------- */
-  .toast-container{
-    position:fixed; top:18px; right:18px; z-index:400;
-    display:flex; flex-direction:column; gap:8px; max-width:320px;
-  }
-  .toast{
-    background: var(--panel-2); border:1px solid var(--border); border-radius:10px;
-    padding:11px 13px; font-size:13px; color: var(--text); line-height:1.4;
-    display:flex; align-items:center; gap:10px;
-    box-shadow: 0 10px 28px rgba(0,0,0,.45);
-  }
-  .toast.error{ border-color: var(--danger); }
-
-  /* ---------- mobile ---------- */
-  @media (max-width: 640px){
-    header{ padding:10px 12px; }
-    header .actions .ghost.small{ padding:8px 12px; min-height:44px; font-size:13px; }
-    .brand small{ display:none; }
-    main{ padding:14px 12px 24px; }
-    .url-row{ flex-direction:column; }
-    .url-row button{ width:100%; min-height:44px; }
-    #grid{ grid-template-columns:repeat(auto-fill, minmax(110px, 1fr)); gap:10px; }
-    .tile .thumb, .tile .thumb-failed{ height:110px; }
-    .save-grid{ flex-direction:column; align-items:stretch; }
-    .save-grid .field{ flex-basis:auto; }
+  @media (max-width:480px){
+    .hero h2{ font-size:24px; }
+    main{ padding:28px 16px 48px; }
   }
 </style>
 </head>
 <body>
-
 <header>
   <div class="brand">
     <svg class="brand-mark" viewBox="0 0 44 36" aria-hidden="true"><rect x="4.5" y="4.5" width="35" height="27" rx="4" fill="none" stroke="currentColor" stroke-width="3.6"/><circle cx="15" cy="13.5" r="3.4" fill="currentColor"/><path d="M9 27.5 L19 16.5 L26 23.5 L31 18.5 L37.5 26" fill="none" stroke="currentColor" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
     <h1>ComicSaver</h1>
     <small>batch image saver</small>
   </div>
-  <div class="actions">
-    <button type="button" class="ghost small" id="btnConfig">Configuration</button>
-    <button type="button" class="ghost small" id="btnHelp">Help</button>
-  </div>
+  <button type="button" class="ghost" id="themeToggle" aria-label="Toggle dark/light theme">◐ Theme</button>
 </header>
 
 <main>
-  <div class="update-banner" id="extUpdateBanner" hidden>
-    <div><strong>ComicSaver <span id="extUpdateVer"></span> is available</strong><span class="hint" style="display:inline"> — you're running <span id="extCurVer"></span>.</span></div>
-    <div class="update-actions">
-      <button type="button" class="primary small" id="extUpdateDownload">Download</button>
-      <button type="button" class="ghost small" id="extUpdateHow">How to update</button>
-      <button type="button" class="ghost small" id="extUpdateDismiss">Dismiss</button>
-    </div>
-  </div>
-  <div class="landing" id="landing">
-    <svg class="watermark" viewBox="0 0 44 36" aria-hidden="true"><rect x="4.5" y="4.5" width="35" height="27" rx="4" fill="none" stroke="currentColor" stroke-width="3.6"/><circle cx="15" cy="13.5" r="3.4" fill="currentColor"/><path d="M9 27.5 L19 16.5 L26 23.5 L31 18.5 L37.5 26" fill="none" stroke="currentColor" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-    <section class="card" id="urlCard">
-      <h2>1 · Load a page</h2>
-      <p class="hint">Paste the URL of a page and ComicSaver will list every image it can find on it.</p>
-      <div class="url-row">
-        <input id="urlInput" class="modal-input" type="url" inputmode="url" placeholder="https://example.com/comic/chapter-1" aria-label="Page URL">
-        <button type="button" class="primary" id="btnLoad">Load images</button>
-      </div>
-    </section>
-    <section class="card ghost-step" id="selectGhost" aria-hidden="true">
-      <h2>2 · Review images</h2>
-      <p class="hint">Thumbnails land here — keep the ones you want, drop the rest.</p>
-    </section>
-    <section class="card ghost-step" id="saveGhost" aria-hidden="true">
-      <h2>3 · Save your batch</h2>
-      <p class="hint">Name the folder, then download everything you kept.</p>
-    </section>
-    <p class="landing-foot">Files never leave your browser.</p>
+  <div class="hero">
+    <svg class="hero-mark" viewBox="0 0 44 36" aria-hidden="true"><rect x="4.5" y="4.5" width="35" height="27" rx="4" fill="none" stroke="currentColor" stroke-width="3.6"/><circle cx="15" cy="13.5" r="3.4" fill="currentColor"/><path d="M9 27.5 L19 16.5 L26 23.5 L31 18.5 L37.5 26" fill="none" stroke="currentColor" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    <h2>Save every image from a comic page in one batch.</h2>
+    <p>ComicSaver is a Chrome extension: one click on the page you're reading, thumbnails of every image, drop the ones you don't want, and the rest download in order — <em>Chapter&nbsp;7_001, Chapter&nbsp;7_002…</em></p>
   </div>
 
-  <section class="card" id="extBanner" hidden>
-    <h2>1 · Page scraped</h2>
-    <p class="hint">The images below were read directly from the tab you were viewing: <a id="extSource" href="#" target="_blank" rel="noopener"></a></p>
-  </section>
+  <div class="card">
+    <div class="dl-zone">
+      <p class="version-line" id="versionLine">Checking for the latest version…</p>
+      <button type="button" class="big-download" id="dlButton" disabled>Download ComicSaver</button>
+      <p class="muted" style="margin-top:14px;">Free. No account, no tracking. For Chrome and Edge.</p>
+    </div>
+  </div>
 
-  <section class="card" id="pastePanel" hidden>
-    <h2>Couldn't fetch that page directly</h2>
-    <p class="hint">Some sites block other pages from reading them (CORS). As a workaround: open the page in your browser, press <strong>Ctrl/Cmd+U</strong> to view its source, copy it, and paste it below. ComicSaver will extract the images from the pasted HTML.</p>
-    <textarea id="pasteHtml" placeholder="&lt;!DOCTYPE html&gt; … paste the page source here …" aria-label="Pasted page HTML"></textarea>
-    <div class="row">
-      <button type="button" class="ghost" id="btnPasteCancel">Cancel</button>
-      <button type="button" class="primary" id="btnParsePasted">Extract images</button>
-    </div>
-  </section>
+  <div class="card">
+    <h3>Install it</h3>
+    <ol class="steps">
+      <li><strong>Download</strong> with the button above and <strong>unzip</strong> the file into a permanent folder — somewhere you'll keep it, since Chrome loads the extension from that folder.</li>
+      <li>Type <code>chrome://extensions</code> into Chrome's address bar, turn on <strong>Developer mode</strong> (top right), click <strong>Load unpacked</strong>, and pick the folder.</li>
+      <li><strong>Pin ComicSaver</strong> to the toolbar, open any comic page, and click its icon.</li>
+    </ol>
+  </div>
 
-  <section class="card" id="selectCard" hidden>
-    <h2>2 · Choose images</h2>
-    <p class="hint">Everything is selected by default. Click a thumbnail (or its checkbox) to drop the ones you don't want.</p>
-    <div id="toolbar">
-      <button type="button" class="ghost small" id="btnSelectAll">Select all</button>
-      <button type="button" class="ghost small" id="btnSelectNone">Select none</button>
-      <span class="count" id="selCount"></span>
-    </div>
-    <div id="grid" style="margin-top:12px"></div>
-  </section>
+  <div class="card">
+    <h3>Why the extension</h3>
+    <ul class="ticks">
+      <li>Reads the live page you're on — no blocked requests, no workarounds.</li>
+      <li>Grabs full-size images, including lazy-loaded and srcset variants.</li>
+      <li>Files land in your Downloads folder, sequentially named per batch.</li>
+    </ul>
+  </div>
 
-  <section class="card" id="saveCard" hidden>
-    <h2>3 · Save to a folder</h2>
-    <p class="hint">Each batch goes into its own new folder. The name is filled in for you from your last batch (bumping any number at the end) — keep it or type your own.</p>
-    <div class="save-grid">
-      <div class="field">
-        <label class="field-label" for="folderInput">Folder name <span style="font-weight:400">(optional)</span></label>
-        <input id="folderInput" class="modal-input" type="text" autocomplete="off" spellcheck="false" aria-label="Folder name">
-      </div>
-      <button type="button" class="primary" id="btnDownload">Download images</button>
-    </div>
-    <div id="willSaveTo"></div>
-    <div id="progressWrap">
-      <div class="bar"><i id="progressBar"></i></div>
-      <div id="progressLabel"></div>
-    </div>
-    <div class="row" id="extOpenRow" hidden style="margin-top:10px">
-      <button type="button" class="ghost small" id="btnOpenDownloadsFolder">Open Downloads folder</button>
-    </div>
-    <div id="failedList"></div>
-  </section>
+  <div class="card">
+    <h3>Already have it? Updating</h3>
+    <ol class="steps">
+      <li>Download the new version above — if several zips are in Downloads, use the highest version number.</li>
+      <li>Unzip it <strong>into your existing ComicSaver folder</strong>, saying yes when asked to overwrite. (Same folder, so your settings survive.)</li>
+      <li>On <code>chrome://extensions</code>, click the reload ⟳ button on ComicSaver's card. Done when the update banner is gone.</li>
+    </ol>
+  </div>
 </main>
 
-<!-- Configuration modal -->
-<div class="modal-overlay" id="configOverlay">
-  <div class="modal">
-    <div class="modal-close-wrap"><button type="button" class="modal-close" data-close aria-label="Close dialog"><svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M3 3l10 10M13 3L3 13" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/></svg></button></div>
-    <h2>Configuration</h2>
-    <p class="modal-sub">Appearance and saving preferences.</p>
-    <div class="config-row">
-      <div class="config-text">
-        <div class="config-name">Appearance</div>
-        <div class="config-desc">Dark or light theme. Saved on this device.</div>
-      </div>
-      <div class="mode-toggle" id="configThemeToggle">
-        <button type="button" class="mode-btn" data-theme-choice="dark">Dark</button>
-        <button type="button" class="mode-btn" data-theme-choice="light">Light</button>
-      </div>
-    </div>
-    <label class="config-row">
-      <span class="config-text">
-        <span class="config-name">Collect linked images</span>
-        <span class="config-desc">Also pick up images that pages link to (for example, thumbnails that link to full-size files). Saved on this device.</span>
-      </span>
-      <input type="checkbox" class="config-check" id="configLinked" aria-label="Collect linked images">
-    </label>
-    <div class="modal-actions">
-      <button type="button" class="primary small" data-close>Done</button>
-    </div>
-  </div>
-</div>
-
-<!-- Technical documentation modal -->
-<div class="modal-overlay" id="docsOverlay">
-  <div class="modal modal-docs">
-    <div class="modal-close-wrap"><button type="button" class="modal-close" data-close aria-label="Close dialog"><svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M3 3l10 10M13 3L3 13" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/></svg></button></div>
-    <h2>ComicSaver — Technical Documentation</h2>
-    <p class="modal-sub">Last updated 2026-09-25.</p>
-    <div class="help-layout">
-      <nav class="help-nav">
-        <a href="#docs-overview">1. Overview</a>
-        <a href="#docs-architecture">2. Architecture</a>
-        <a href="#docs-collection">3. Image collection</a>
-        <a href="#docs-selection">4. Choosing images</a>
-        <a href="#docs-saving">5. Saving</a>
-        <a href="#docs-settings">6. Settings</a>
-        <a href="#docs-extension">7. Chrome extension</a>
-        <a href="#docs-requirements">8. Requirements</a>
-        <a href="#docs-maintainer">9. Maintainer notes</a>
-        <a href="#docs-qa">10. QA regression checklist</a>
-      </nav>
-      <div class="help-content">
-        <section id="docs-overview">
-          <h3>1. Overview</h3>
-          <p>ComicSaver is a single-file, client-side web application for bulk-saving the images from a page — built for downloading manga/comic chapters a page at a time. Paste a page URL, review the images as thumbnails, drop the ones you don't want, then download the rest.</p>
-          <p>The entire application — markup, styles, and logic — is contained in one HTML file. There is no build step for the web version, no backend, no account system, and no database. A companion Chrome extension scrapes the open tab directly and saves through the downloads API. Nothing is ever uploaded: a footer line states that files never leave the browser.</p>
-        </section>
-        <section id="docs-architecture">
-          <h3>2. Architecture</h3>
-          <ul>
-            <li>All application state is held in a single in-memory <code>state</code> object (<code>images</code> with per-image <code>kept</code> flags, <code>baseUrl</code>, UI flags). Rendering is performed by small render functions (<code>renderGrid</code>, <code>renderFailedList</code>) that rebuild their panes from that state.</li>
-            <li>Two compile-time flags select the build variant from the same source: <code>IS_QA</code> (QA site: red badge, “ — QA” title, “ QA” stamped into names) and <code>IS_EXTENSION</code> (Chrome extension app page).</li>
-            <li>Appearance is controlled by a <code>data-theme</code> attribute on the <code>&lt;html&gt;</code> element (dark default, light follows the device), persisted per device.</li>
-            <li>The header brand is a hand-drawn inline SVG: an image-frame mark (frame, sun, mountain) beside the <code>ComicSaver</code> wordmark in theme-aware <code>--brand-green</code> (mint on dark, deep green on light), matching the SetBook logo's style. No external image assets.</li>
-            <li>The first screen is a centered landing: the URL bar sits beside a faint oversized watermark (reusing the image-frame logo paths) with ghost previews of the next two steps — “2 · Review images” and “3 · Save your batch” — rendered non-interactive and dimmed until real steps replace them. The ghost steps are hidden in the extension build, which starts at image review.</li>
-            <li>Thumbnails and downloads request images with <code>referrerpolicy="no-referrer"</code> / <code>referrerPolicy: 'no-referrer'</code>, which defeats the most common kind of hotlink protection (servers that 403 on a foreign <code>Referer</code> but allow a missing one).</li>
-          </ul>
-        </section>
-        <section id="docs-collection">
-          <h3>3. Image collection</h3>
-          <ul>
-            <li><strong>Website:</strong> the pasted page is fetched and parsed with <code>DOMParser</code>. The extractor collects <code>&lt;img&gt;</code> <code>src</code> (falling back through <code>data-src</code> and other lazy-load attributes), the largest candidate of each <code>srcset</code>/<code>data-srcset</code>, the largest <code>&lt;source&gt;</code> inside <code>&lt;picture&gt;</code>, and — when “Collect linked images” is enabled — <code>&lt;a&gt;</code> links whose <code>href</code> points at an image file.</li>
-            <li><strong>CORS:</strong> browsers only let a page read another site's content if that site allows it. When a page can't be fetched directly, ComicSaver offers a paste-page-source fallback (view source, copy, paste).</li>
-            <li><strong>Extension:</strong> a content script runs the same extractor rules against the live tab's DOM, so there is no fetch and no CORS involved; the payload travels to the app page via <code>chrome.storage.session</code>.</li>
-            <li><strong>Security:</strong> every candidate URL is resolved against the page's base URL first, and only <code>http(s)</code> (plus <code>data:</code> images) survive — <code>javascript:</code> URLs are rejected, including obfuscated ones with embedded tabs or newlines, which browsers silently strip during URL parsing. The failed-downloads list only links <code>http(s)</code> and <code>data:image</code> URLs; anything else renders as inert text.</li>
-            <li>Duplicates are removed; the surviving images keep page order.</li>
-          </ul>
-        </section>
-        <section id="docs-selection">
-          <h3>4. Choosing images</h3>
-          <ul>
-            <li>Everything starts selected. Clicking a thumbnail or its checkbox toggles it; <em>Select all</em> / <em>Select none</em> handle big batches. The header shows a live “N of M selected” count.</li>
-            <li>Only kept images are downloaded, in page order.</li>
-          </ul>
-        </section>
-        <section id="docs-saving">
-          <h3>5. Saving</h3>
-          <ul>
-            <li><strong>Website (Chrome/Edge):</strong> the File System Access API (<code>showDirectoryPicker</code>) asks for a folder once; each batch becomes a new real subfolder inside it. The picked folder is reused for every batch.</li>
-            <li><strong>Website (other browsers):</strong> falls back to anchor downloads into the Downloads folder, with files named <code>&lt;folder&gt;_&lt;file&gt;</code> (browsers flatten “/” in download names, so pages can't create subfolders that way).</li>
-            <li><strong>Extension:</strong> saves through <code>chrome.downloads.download</code> straight into the Downloads folder. Every file is renamed to <code>&lt;name&gt;_001.ext</code>, <code>&lt;name&gt;_002.ext</code>, … (zero-padded, original image type kept) so the batch stays together and sorts in page order. <code>conflictAction: 'uniquify'</code> keeps repeat downloads from overwriting. Caveat: Chrome silently ignores the requested file name when another extension manages downloads (it registers an <code>onDeterminingFilename</code> listener — Chromium issue 579563); ComicSaver detects this after the batch and says so instead of claiming the rename worked.</li>
-            <li><strong>Batch naming:</strong> the name field comes pre-filled from the last batch, incrementing any trailing number (<code>Chapter 3</code> → <code>Chapter 4</code>; no number → appends “ 2”; first ever → <code>batch-1</code>) — keep it or type over it. The last-used name is kept in the browser's <code>localStorage</code>, and the effective name is captured at batch start so typing during a download can't corrupt the increment chain.</li>
-            <li>Individual fetch failures (CORS, hotlinking, dead links) land in a failed list after the batch with links, so they can be grabbed by hand. In the extension, an “Open Downloads folder” button appears after each successful batch (web pages are forbidden from opening the file manager).</li>
-          </ul>
-        </section>
-        <section id="docs-settings">
-          <h3>6. Settings</h3>
-          <p>All settings live in the browser's <code>localStorage</code> — no files, no sync:</p>
-          <ul>
-            <li><code>comicsaver-theme</code> — <code>dark</code> / <code>light</code> appearance.</li>
-            <li><code>comicsaver-last-folder</code> — last batch name, feeding the auto-increment.</li>
-            <li><code>comicsaver-linked-images</code> — <code>1</code> collects linked image files too.</li>
-            <li><code>comicsaver-ext-update-dismissed</code> — extension self-update banner dismissal per version.</li>
-          </ul>
-        </section>
-        <section id="docs-extension">
-          <h3>7. Chrome extension</h3>
-          <ul>
-            <li>Manifest V3. Permissions are minimal: <code>activeTab</code>, <code>scripting</code>, <code>downloads</code>, <code>storage</code> — no broad host access.</li>
-            <li>Flow: toolbar click → background worker injects the content script into the live tab → scraped payload via <code>chrome.storage.session</code> → app tab (the familiar ComicSaver UI, built from the same source with <code>IS_EXTENSION</code>) opens.</li>
-            <li>MV3 extension pages forbid inline scripts, so the build externalizes the script to <code>app.js</code>.</li>
-            <li><strong>Self-update:</strong> unpacked extensions don't auto-update, so the app page fetches <code>ext-version.json</code> from the site on every open and shows a gold banner when a newer version exists, with a <em>Download</em> button, a <em>How to update</em> step-by-step guide (update the <strong>same</strong> folder so settings survive, then reload on <code>chrome://extensions</code>), and per-version dismiss.</li>
-          </ul>
-        </section>
-        <section id="docs-requirements">
-          <h3>8. Requirements</h3>
-          <ul>
-            <li>Website folder picker: Chrome or Edge (File System Access API). All other modern browsers get the Downloads-folder fallback.</li>
-            <li>Extension: Chrome (or another Chromium browser with <code>chrome.downloads</code>).</li>
-            <li>The sites are plain static pages — JavaScript required, no network beyond the target page and its images.</li>
-          </ul>
-        </section>
-        <section id="docs-maintainer">
-          <h3>9. Maintainer notes</h3>
-          <ul>
-            <li>Source of truth is the single <code>index.html</code>; the QA and extension builds are generated, never hand-edited.</li>
-            <li>GitHub Pages sites (public, unlisted via <code>noindex</code> + <code>robots.txt</code> disallow-all): production <code>Max-Levi/ComicSaver</code> and QA <code>Max-Levi/ComicSaver-QA</code>. GitHub free can't serve Pages from a private repo, hence public-but-unlisted.</li>
-            <li>Deploy scripts mirror the SetBook workflow: <code>comicsaver_deploy.py</code> (prod), <code>comicsaver_qa_deploy.py</code> (flips <code>IS_QA</code>, injects noindex). Extension: <code>comicsaver_ext_build.py</code> (flips <code>IS_EXTENSION</code>, externalizes the script, zips <code>dist/</code>) and <code>comicsaver_ext_publish.py</code> (builds, then pushes the zip + <code>ext-version.json</code> to the prod Pages site).</li>
-            <li>Only large features go to QA first; small fixes go straight to production. When unsure, ask.</li>
-            <li>Per standing rule: this documentation is updated with every app update — no separate approval needed.</li>
-            <li>Design tokens are disciplined: gold is reserved for the brand accents and active states, never for general labels; radii follow a three-step scale (<code>6px</code> controls, <code>10px</code> surfaces, <code>999px</code> pills); pressable controls translate 1px on press and show a gold <code>:focus-visible</code> ring; input placeholders hold ≥4.5:1 contrast in both themes; empty/no-image states show a small line-art image-frame illustration.</li>
-          </ul>
-        </section>
-        <section id="docs-qa">
-          <h3>10. QA regression checklist</h3>
-          <ul>
-            <li><code>comicsaver-test.js</code> — website suite (extraction, selection, folder naming/increment, web saving paths, settings, help, URL-scheme security): <strong>31 checks</strong>, all green.</li>
-            <li><code>ext-test.js</code> — extension suite: <strong>51 checks</strong>, all green — extractor fixture (incl. obfuscated <code>javascript:</code> rejection), app page with stubbed <code>chrome.*</code> (sequential naming, sanitization, extension copy, docs modal, rename-override detection), self-update check incl. the step-by-step update guide. Run with <code>NODE_PATH=~/workspace/setbook-qa/node_modules node ext-test.js</code>.</li>
-            <li>Release flow: bump <code>manifest.json</code> version → build → QA green → publish → verify live <code>ext-version.json</code> reports the new version and the zip downloads byte-identical.</li>
-          </ul>
-        </section>
-      </div>
-    </div>
-    <div class="modal-actions">
-      <button type="button" class="primary small" data-close>Done</button>
-    </div>
-  </div>
-</div>
-
-<!-- Extension update guide modal -->
-<div class="modal-overlay" id="updateOverlay">
-  <div class="modal modal-help">
-    <div class="modal-close-wrap"><button type="button" class="modal-close" data-close aria-label="Close dialog"><svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M3 3l10 10M13 3L3 13" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/></svg></button></div>
-    <h2>Updating the ComicSaver extension</h2>
-    <p class="modal-sub">Unpacked extensions can't update themselves, so it takes a minute by hand. Your settings live in the browser — but only if you update the <strong>same folder</strong>, not a fresh copy.</p>
-    <div class="help-content">
-      <ol class="update-steps">
-        <li><strong>Download the new version.</strong> Use the <em>Download</em> button in the gold banner (or <a id="updateDlLink" href="#" rel="noopener">this link</a>). It saves a <code>.zip</code> file, usually into your Downloads folder — if several ComicSaver zips are there, use the one with the highest version number.
-          <div style="margin-top:8px"><button type="button" class="ghost small" id="btnUpdateOpenDl">Open Downloads folder</button></div></li>
-        <li><strong>Open your ComicSaver folder</strong> — the one you picked with “Load unpacked” when you first installed it. Your settings survive only if you update this <strong>same folder</strong>, not a fresh copy.</li>
-        <li><strong>Unzip the download right into that folder, replacing the old files.</strong> The zip holds the new files with no folder of their own, so “Extract here” drops them in place — say yes when asked to overwrite or replace. On a Mac, double-click the zip to expand it, then drag the expanded files into the folder and choose Replace.</li>
-        <li><strong>Reload the extension.</strong> Type <code>chrome://extensions</code> into Chrome's address bar, find ComicSaver, and click the reload ⟳ button on its card. (Chrome won't let a page open that address for you.)</li>
-        <li><strong>Reopen ComicSaver.</strong> If the gold banner is gone, you're on the new version.</li>
-      </ol>
-    </div>
-    <div class="modal-actions">
-      <button type="button" class="primary small" data-close>Done</button>
-    </div>
-  </div>
-</div>
-
-<!-- Help modal -->
-<div class="modal-overlay" id="helpOverlay">
-  <div class="modal modal-help">
-    <div class="modal-close-wrap"><button type="button" class="modal-close" data-close aria-label="Close dialog"><svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M3 3l10 10M13 3L3 13" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/></svg></button></div>
-    <h2>ComicSaver help</h2>
-    <div class="help-content">
-      <h3>What it does</h3>
-      <p>ComicSaver takes the URL of a page, lists every image on it as thumbnails, lets you drop the ones you don't want, then saves the rest into a brand-new folder — one folder per batch.</p>
-      <h3>The three steps</h3>
-      <ul>
-        <li><strong>Load a page.</strong> Paste a URL and press <em>Load images</em>. ComicSaver reads the page and pulls out its images: <code>&lt;img&gt;</code> tags (including <code>srcset</code> and lazy-load attributes), <code>&lt;picture&gt;</code> sources, and — if enabled in Configuration — links that point at image files.</li>
-        <li><strong>Choose images.</strong> Everything starts selected. Click a thumbnail or its checkbox to deselect it. <em>Select all</em> / <em>Select none</em> are there for big batches.</li>
-        <li><strong>Save to a folder.</strong> The name is filled in for you from your last batch, incrementing any number at the end (e.g. <code>Chapter 3</code> → <code>Chapter 4</code>) — keep it or type your own. The first batch ever is called <code>batch-1</code>.</li>
-      </ul>
-      <h3>Where the files go</h3>
-      <ul>
-        <li>In Chrome and Edge you'll be asked to pick a folder once; each batch then becomes a new subfolder inside it.</li>
-        <li>Other browsers save into your normal Downloads folder, with every file named <code>&lt;folder&gt;_&lt;file&gt;</code> (browsers don't let a page create subfolders there) so each batch stays grouped together.</li>
-      </ul>
-      <h3>Why some pages won't load</h3>
-      <p>Browsers only let a page read another site's content if that site allows it (CORS). Many sites don't. When a page can't be fetched directly, ComicSaver offers the paste-source workaround: view the page's source (<strong>Ctrl/Cmd+U</strong>), copy it, and paste it in. Previews and downloads request images <em>without</em> a referrer, which defeats the most common kind of hotlink protection; sites that insist on their own address as the referrer can't be loaded by any web page — those files land in the failed list after the batch so you can grab them by hand. There is also a <strong>ComicSaver Chrome extension</strong> that reads the open tab directly, so the URL step and the paste workaround go away entirely — and its downloads are saved with sequential file names.</p>
-    </div>
-    <div class="modal-actions">
-      <button type="button" class="ghost small" id="btnDocs">Technical documentation</button>
-      <button type="button" class="primary small" data-close>Done</button>
-    </div>
-  </div>
-</div>
-
-<div class="toast-container" id="toasts"></div>
+<footer>
+  ComicSaver keeps nothing and sends nothing anywhere — everything runs in your browser.<br>
+  This page is unlisted.
+</footer>
 
 <script>
-"use strict";
-/* Build flag: flipped to true by the QA deploy script for the QA site. */
-const IS_QA = false;
-/* Build flag: flipped to true by the extension build script for the Chrome extension. */
-const IS_EXTENSION = false;
-
-/* ================= helpers ================= */
-const $ = (id) => document.getElementById(id);
-const LS = {
-  theme: 'comicsaver-theme',
-  lastFolder: 'comicsaver-last-folder',
-  linked: 'comicsaver-linked-images',
-};
-const sleep = (ms) => new Promise(r => setTimeout(r, ms));
-
-function toast(msg, isErr){
-  const el = document.createElement('div');
-  el.className = 'toast' + (isErr ? ' error' : '');
-  el.textContent = msg;
-  $('toasts').appendChild(el);
-  setTimeout(() => {
-    el.style.transition = 'opacity .4s'; el.style.opacity = '0';
-    setTimeout(() => el.remove(), 450);
-  }, 4200);
-}
-
-/* ================= QA badge (flipped on by the QA deploy script) ================= */
-if (IS_QA){
-  document.title += ' — QA';
-  const b = document.createElement('span');
-  b.className = 'qa-badge'; b.textContent = 'QA';
-  document.querySelector('.brand').appendChild(b);
-}
-
-/* ================= modals ================= */
-function closeOverlays(){
-  document.querySelectorAll('.modal-overlay.open').forEach(o => o.classList.remove('open'));
-}
-document.querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', closeOverlays));
-document.querySelectorAll('.modal-overlay').forEach(o =>
-  o.addEventListener('click', e => { if (e.target === o) closeOverlays(); }));
-document.addEventListener('keydown', e => { if (e.key === 'Escape') closeOverlays(); });
-$('btnConfig').addEventListener('click', () => $('configOverlay').classList.add('open'));
-$('btnHelp').addEventListener('click', () => $('helpOverlay').classList.add('open'));
-$('btnDocs').addEventListener('click', () => {
-  $('helpOverlay').classList.remove('open');
-  $('docsOverlay').classList.add('open');
-});
-
-/* ================= configuration ================= */
-function syncThemeButtons(){
-  const cur = localStorage.getItem(LS.theme) || 'dark';
-  document.querySelectorAll('#configThemeToggle .mode-btn').forEach(b =>
-    b.classList.toggle('active', b.dataset.themeChoice === cur));
-}
-function applyTheme(t){
-  document.documentElement.setAttribute('data-theme', t === 'light' ? 'light' : 'dark');
-  localStorage.setItem(LS.theme, t);
-  syncThemeButtons();
-}
-document.querySelectorAll('#configThemeToggle .mode-btn').forEach(b =>
-  b.addEventListener('click', () => applyTheme(b.dataset.themeChoice)));
-
-$('configLinked').checked = localStorage.getItem(LS.linked) === '1';
-$('configLinked').addEventListener('change', e =>
-  localStorage.setItem(LS.linked, e.target.checked ? '1' : '0'));
-
-/* ================= loading a page ================= */
-const state = { images: [], baseUrl: '', dirHandle: null, downloading: false };
-
-function normalizeUrl(raw){
-  raw = (raw || '').trim();
-  if (!raw) return '';
-  if (!/^[a-z][a-z0-9+.-]*:\/\//i.test(raw)) raw = 'https://' + raw;
-  return raw;
-}
-function setLoading(on){
-  $('selectCard').hidden = false;
-  $('saveCard').hidden = true;
-  $('selectGhost').hidden = true;
-  $('saveGhost').hidden = false;
-  $('selCount').textContent = '';
-  $('grid').innerHTML = on
-    ? '<div class="spinner-row"><div class="spinner"></div>Loading images…</div>'
-    : '';
-}
-async function loadFromUrl(){
-  const url = normalizeUrl($('urlInput').value);
-  if (!url){ toast('Paste a page URL first.', true); return; }
-  $('urlInput').value = url;
-  $('pastePanel').hidden = true;
-  setLoading(true);
-  try{
-    const res = await fetch(url, { mode: 'cors', credentials: 'omit', redirect: 'follow' });
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    const html = await res.text();
-    if (!/^\s*</.test(html)) throw new Error('not-html');
-    ingest(html, res.url || url);
-  }catch(err){
-    setLoading(false);
-    $('selectCard').hidden = true;
-    $('selectGhost').hidden = false;
-    $('saveGhost').hidden = true;
-    $('pastePanel').hidden = false;
-    $('pasteHtml').value = '';
-    toast('That page blocks direct reading (CORS). Paste its source below instead.', true);
-  }
-}
-$('btnLoad').addEventListener('click', loadFromUrl);
-$('urlInput').addEventListener('keydown', e => { if (e.key === 'Enter') loadFromUrl(); });
-$('btnPasteCancel').addEventListener('click', () => { $('pastePanel').hidden = true; });
-$('btnParsePasted').addEventListener('click', () => {
-  const html = $('pasteHtml').value;
-  if (!html.trim()){ toast('Paste the page source first.', true); return; }
-  const base = normalizeUrl($('urlInput').value) || location.href;
-  ingest(html, base);
-});
-
-/* ================= image extraction ================= */
-function pickLargestSrcset(ss){
-  let best = null, bestScore = -1;
-  for (const part of ss.split(',')){
-    const tokens = part.trim().split(/\s+/).filter(Boolean);
-    if (!tokens.length) continue;
-    const u = tokens[0], d = tokens[1] || '';
-    let score = 0;
-    const mw = d.match(/^(\d+)w$/), mx = d.match(/^([\d.]+)x$/);
-    if (mw) score = +mw[1];
-    else if (mx) score = +mx[1] * 100000;
-    if (score >= bestScore){ bestScore = score; best = u; }
-  }
-  return best;
-}
-const LAZY_ATTRS = ['data-src','data-srcset','data-lazy-src','data-lazy-srcset',
-  'data-original','data-fullsrc','data-image','data-hi-res-src','data-zoom-src'];
-const IMG_EXT = /\.(jpe?g|png|gif|webp|avif|bmp|svg)(\?|#|$)/i;
-
-function extractImages(html, base){
-  const doc = new DOMParser().parseFromString(html, 'text/html');
-  const seen = new Set(), out = [];
-  const push = (u) => {
-    if (!u) return;
-    u = u.trim();
-    if (!u || u.startsWith('#')) return;
-    let abs;
-    try{ abs = new URL(u, base).href; }catch(e){ return; }
-    /* Check the scheme AFTER resolution: the URL parser strips tabs/newlines,
-       so "java\tscript:…" would otherwise resolve to a javascript: URL. */
-    if (/^javascript:/i.test(abs)) return;
-    if (abs.startsWith('data:') && !abs.startsWith('data:image/')) return;
-    if (seen.has(abs)) return;
-    seen.add(abs);
-    out.push(abs);
-  };
-  doc.querySelectorAll('img').forEach(img => {
-    push(img.getAttribute('src'));
-    const ss = img.getAttribute('srcset');
-    if (ss) push(pickLargestSrcset(ss));
-    for (const a of LAZY_ATTRS){
-      const v = img.getAttribute(a);
-      if (v) push(/srcset/i.test(a) ? pickLargestSrcset(v) : v);
-    }
+(function(){
+  var root = document.documentElement;
+  function applyTheme(t){ root.setAttribute('data-theme', t); }
+  applyTheme(localStorage.getItem('comicsaver-landing-theme') || 'dark');
+  document.getElementById('themeToggle').addEventListener('click', function(){
+    var next = root.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+    localStorage.setItem('comicsaver-landing-theme', next);
+    applyTheme(next);
   });
-  doc.querySelectorAll('picture source[srcset], source[srcset]').forEach(s =>
-    push(pickLargestSrcset(s.getAttribute('srcset'))));
-  if (localStorage.getItem(LS.linked) === '1'){
-    doc.querySelectorAll('a[href]').forEach(a => {
-      const h = a.getAttribute('href');
-      if (h && IMG_EXT.test(h)) push(h);
+
+  var btn = document.getElementById('dlButton');
+  var line = document.getElementById('versionLine');
+  fetch('ext-version.json', { cache: 'no-store' })
+    .then(function(r){ if(!r.ok) throw new Error('http ' + r.status); return r.json(); })
+    .then(function(info){
+      if(!info || !info.version || !info.download) throw new Error('bad version file');
+      line.textContent = 'Latest version: v' + info.version;
+      btn.disabled = false;
+      btn.addEventListener('click', function(){ window.location.href = info.download; });
+    })
+    .catch(function(){
+      line.textContent = 'Could not check for the latest version — check your connection and reload.';
     });
-  }
-  return out;
-}
-
-/* ================= grid + selection ================= */
-function shortName(url){
-  if (url.startsWith('data:')) return 'embedded image';
-  try{
-    const p = new URL(url).pathname;
-    const n = decodeURIComponent(p.split('/').pop() || '');
-    return n || url;
-  }catch(e){ return url; }
-}
-function ingest(html, base){
-  setLoading(false);
-  const urls = extractImages(html, base);
-  state.images = urls.map((url, i) => ({ url, kept: true, id: i }));
-  state.baseUrl = base;
-  $('pastePanel').hidden = true;
-  $('selectCard').hidden = false;
-  $('saveCard').hidden = false;
-  $('selectGhost').hidden = true;
-  $('saveGhost').hidden = true;
-  renderGrid();
-  updateCount();
-  updateWillSaveTo();
-  $('selectCard').scrollIntoView({ behavior: 'smooth', block: 'start' });
-  toast(urls.length
-    ? `Found ${urls.length} image${urls.length === 1 ? '' : 's'} — all selected.`
-    : 'No images found on that page.', !urls.length);
-}
-/* Hand-drawn line-art mark for empty states (echoes the header logo). */
-const EMPTY_ART = '<svg class="empty-art" viewBox="0 0 44 36" aria-hidden="true"><rect x="4.5" y="4.5" width="35" height="27" rx="4" fill="none" stroke="currentColor" stroke-width="3.6"/><circle cx="15" cy="13.5" r="3.4" fill="currentColor"/><path d="M9 27.5 L19 16.5 L26 23.5 L31 18.5 L37.5 26" fill="none" stroke="currentColor" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-function renderGrid(){
-  const grid = $('grid');
-  grid.innerHTML = '';
-  if (!state.images.length){
-    grid.innerHTML = '<div class="empty-note">' + EMPTY_ART +
-      (IS_EXTENSION
-        ? 'No images found. Try the icon on another page.'
-        : 'No images found. Try another page — or paste the page source if the site blocks direct fetching.') +
-      '</div>';
-    return;
-  }
-  for (const img of state.images){
-    const label = document.createElement('label');
-    label.className = 'tile kept';
-    label.title = img.url;
-    const cb = document.createElement('input');
-    cb.type = 'checkbox'; cb.checked = true;
-    cb.setAttribute('aria-label', 'Keep this image');
-    cb.addEventListener('change', () => {
-      img.kept = cb.checked;
-      label.classList.toggle('kept', cb.checked);
-      label.classList.toggle('dropped', !cb.checked);
-      updateCount();
-    });
-    const im = document.createElement('img');
-    im.className = 'thumb'; im.loading = 'lazy'; im.alt = '';
-    /* Strip the referrer: many sites block hotlinking by rejecting requests
-       whose Referer is some other site, while still serving requests with no
-       referrer at all (direct visits/bookmarks). This makes previews load on
-       a large class of such sites. */
-    im.setAttribute('referrerpolicy', 'no-referrer');
-    im.addEventListener('error', () => {
-      const d = document.createElement('div');
-      d.className = 'thumb-failed';
-      d.textContent = 'Preview unavailable — the file may still download.';
-      im.replaceWith(d);
-    });
-    im.src = img.url;
-    const cap = document.createElement('div');
-    cap.className = 'cap'; cap.textContent = shortName(img.url);
-    label.append(cb, im, cap);
-    grid.appendChild(label);
-  }
-}
-function setAll(kept){
-  state.images.forEach(i => i.kept = kept);
-  document.querySelectorAll('#grid .tile').forEach(t => {
-    t.classList.toggle('kept', kept);
-    t.classList.toggle('dropped', !kept);
-    t.querySelector('input').checked = kept;
-  });
-  updateCount();
-}
-$('btnSelectAll').addEventListener('click', () => setAll(true));
-$('btnSelectNone').addEventListener('click', () => setAll(false));
-function updateCount(){
-  const kept = state.images.filter(i => i.kept).length;
-  $('selCount').innerHTML = `<strong>${kept}</strong> of ${state.images.length} selected`;
-  $('btnDownload').disabled = kept === 0 || state.downloading;
-}
-
-/* ================= folder naming ================= */
-function lastFolder(){ return localStorage.getItem(LS.lastFolder) || ''; }
-function suggestFolderName(){
-  const last = lastFolder();
-  if (!last) return 'batch-1';
-  const m = last.match(/^(.*?)(\d+)$/);
-  if (m) return m[1] + (parseInt(m[2], 10) + 1);
-  return last + ' 2';
-}
-function resolveFolderName(){
-  let name = $('folderInput').value.trim() || suggestFolderName();
-  if (IS_QA) name += ' QA';
-  return name;
-}
-function updateWillSaveTo(){
-  const suggestion = suggestFolderName();
-  $('folderInput').placeholder = 'e.g. ' + suggestion;
-  const strong = document.createElement('strong');
-  if (IS_EXTENSION){
-    /* Preview the sequential file naming: <name>_001 … <name>_00N. */
-    const name = resolveFolderName();
-    const n = Math.max(state.images.filter(i => i.kept).length, 1);
-    const digits = Math.max(3, String(n).length);
-    strong.textContent = n > 1
-      ? `${name}_001 … ${name}_` + String(n).padStart(digits, '0')
-      : `${name}_001`;
-    $('willSaveTo').textContent = 'Files will be named: ';
-  }else{
-    strong.textContent = resolveFolderName();
-    $('willSaveTo').textContent = 'Will save to: ';
-  }
-  $('willSaveTo').appendChild(strong);
-}
-$('folderInput').addEventListener('input', updateWillSaveTo);
-/* Pre-fill the name field with the next suggestion (last name, incremented).
-   Runs at startup and after every batch; the user can keep it or type over it.
-   Clearing the field manually falls back to the same suggestion, shown as the
-   placeholder. */
-function prefillFolderInput(){
-  $('folderInput').value = suggestFolderName();
-  updateWillSaveTo();
-}
-
-/* Extension sequential naming keeps each file's original image type. */
-function extFor(url){
-  if (url.startsWith('data:')){
-    const m = url.match(/^data:image\/([a-z0-9+]+)/i);
-    let ext = ((m && m[1]) || 'png').toLowerCase().replace('jpeg', 'jpg');
-    return '.' + (ext === 'svg+xml' ? 'svg' : ext);
-  }
-  try{
-    const p = new URL(url).pathname;
-    const base = decodeURIComponent(p.substring(p.lastIndexOf('/') + 1)).split(/[?#]/)[0];
-    const m = base.match(/\.[a-z0-9]{2,5}$/i);
-    return m ? m[0].toLowerCase() : '.jpg';
-  }catch(e){ return '.jpg'; }
-}
-/* ================= downloading ================= */
-function fileNameFor(url, i, taken){
-  let name;
-  if (url.startsWith('data:')){
-    const m = url.match(/^data:image\/([a-z0-9+]+)/i);
-    let ext = ((m && m[1]) || 'png').toLowerCase().replace('jpeg', 'jpg');
-    if (ext === 'svg+xml') ext = 'svg';
-    name = `image-${i + 1}.${ext}`;
-  }else{
-    try{
-      const p = new URL(url).pathname;
-      name = decodeURIComponent(p.substring(p.lastIndexOf('/') + 1)) || `image-${i + 1}`;
-    }catch(e){ name = `image-${i + 1}`; }
-    name = name.split(/[?#]/)[0].replace(/[\\/:*?"<>|]/g, '_').trim() || `image-${i + 1}`;
-    if (!/\.[a-z0-9]{2,5}$/i.test(name)) name += '.jpg';
-  }
-  let base = name, n = 1;
-  while (taken.has(base.toLowerCase())){
-    n++;
-    const dot = name.lastIndexOf('.');
-    base = name.slice(0, dot) + '-' + n + name.slice(dot);
-  }
-  taken.add(base.toLowerCase());
-  return base;
-}
-function dataUriToBlob(uri){
-  const comma = uri.indexOf(',');
-  const head = uri.slice(0, comma), data = uri.slice(comma + 1);
-  const mime = (head.match(/data:([^;]+)/) || [])[1] || 'image/png';
-  const bin = atob(data);
-  const bytes = new Uint8Array(bin.length);
-  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-  return new Blob([bytes], { type: mime });
-}
-async function fetchImageBlob(url){
-  if (url.startsWith('data:')) return dataUriToBlob(url);
-  /* no-referrer here for the same anti-hotlinking reason as the thumbnails */
-  const res = await fetch(url, { mode: 'cors', credentials: 'omit', referrerPolicy: 'no-referrer' });
-  if (!res.ok) throw new Error('HTTP ' + res.status);
-  return await res.blob();
-}
-function triggerAnchorDownload(href, path){
-  const a = document.createElement('a');
-  a.href = href; a.download = path;
-  document.body.appendChild(a); a.click(); a.remove();
-}
-async function getDirHandle(){
-  /* The picked folder is always reused once granted — no per-batch prompt. */
-  if (state.dirHandle){
-    try{
-      if (await state.dirHandle.queryPermission({ mode: 'readwrite' }) === 'granted')
-        return state.dirHandle;
-    }catch(e){ /* fall through to picker */ }
-  }
-  if (typeof window.showDirectoryPicker !== 'function') return null;
-  try{
-    state.dirHandle = await window.showDirectoryPicker({ id: 'comicsaver', mode: 'readwrite' });
-    return state.dirHandle;
-  }catch(e){ return 'denied'; } /* user cancelled */
-}
-function resetDownloadUI(){
-  state.downloading = false;
-  setTimeout(() => {
-    $('progressWrap').style.display = 'none';
-    $('progressBar').style.width = '0%';
-    $('progressLabel').textContent = '';
-    updateCount();
-  }, 600);
-  updateWillSaveTo();
-}
-function renderFailedList(failed){
-  const fl = $('failedList');
-  fl.style.display = 'none';
-  fl.innerHTML = '';
-  if (!failed.length) return;
-  fl.style.display = 'block';
-  const p = document.createElement('div');
-  p.innerHTML = `<strong style="color:var(--text)">${failed.length} file${failed.length === 1 ? '' : 's'} couldn't be downloaded</strong> (the site likely blocks cross-origin reads — open each link to save it by hand):`;
-  const ul = document.createElement('ul');
-  for (const f of failed){
-    const li = document.createElement('li');
-    /* Only http(s) and image data: URLs become clickable links — anything
-       else (e.g. a smuggled javascript: URL) is shown as inert text. */
-    if (/^https?:\/\//i.test(f.url) || /^data:image\//i.test(f.url)){
-      const a = document.createElement('a');
-      a.href = f.url; a.target = '_blank'; a.rel = 'noopener';
-      a.textContent = f.name;
-      li.appendChild(a);
-    }else{
-      li.textContent = f.name + ' (blocked: not a web address)';
-    }
-    ul.appendChild(li);
-  }
-  fl.append(p, ul);
-}
-async function downloadBatch(){
-  if (state.downloading) return;
-  const kept = state.images.filter(i => i.kept);
-  if (!kept.length){ toast('Nothing selected.', true); return; }
-  const folder = resolveFolderName();
-  /* Capture the user-facing name now (without any QA stamp): the input may
-     change while the batch is downloading, and the stored name must be the
-     one this batch actually used. */
-  const folderBase = $('folderInput').value.trim() || suggestFolderName();
-  if (IS_EXTENSION){ await downloadBatchExtension(kept, folder, folderBase); return; }
-  state.downloading = true;
-  $('btnDownload').disabled = true;
-  $('progressWrap').style.display = 'block';
-  $('failedList').style.display = 'none';
-  $('failedList').innerHTML = '';
-
-  const dir = await getDirHandle();
-  if (dir === 'denied'){ resetDownloadUI(); toast('Folder picker was cancelled.', true); return; }
-  let sub = null;
-  const useFs = !!dir;
-  if (useFs){
-    try{ sub = await dir.getDirectoryHandle(folder, { create: true }); }
-    catch(e){ resetDownloadUI(); toast('Could not create the folder: ' + e.message, true); return; }
-  }else{
-    toast('This browser has no folder picker — files will save into your Downloads folder, each named “' + folder + '_…”, so the batch stays grouped.');
-  }
-
-  const taken = new Set();
-  const failed = [];
-  let saved = 0, unverified = 0;
-  for (let k = 0; k < kept.length; k++){
-    const img = kept[k];
-    const fname = fileNameFor(img.url, k, taken);
-    $('progressLabel').textContent = `Saving ${k + 1} of ${kept.length} — ${fname}`;
-    try{
-      const blob = await fetchImageBlob(img.url);
-      if (useFs){
-        const fh = await sub.getFileHandle(fname, { create: true });
-        const w = await fh.createWritable();
-        await w.write(blob);
-        await w.close();
-      }else{
-        /* Anchor downloads can't create subfolders (browsers flatten any "/"
-           in the download name), so prefix each file with the folder name to
-           keep the batch grouped in the Downloads folder. */
-        const objUrl = URL.createObjectURL(blob);
-        triggerAnchorDownload(objUrl, folder + '_' + fname);
-        await sleep(300);
-        URL.revokeObjectURL(objUrl);
-      }
-      saved++;
-    }catch(e){
-      if (!useFs){
-        /* Last resort: a plain download of the URL needs no CORS (Chrome/Edge honor it). */
-        triggerAnchorDownload(img.url, folder + '_' + fname);
-        await sleep(300);
-        unverified++;
-      }else{
-        failed.push({ url: img.url, name: fname });
-      }
-    }
-    $('progressBar').style.width = Math.round(((k + 1) / kept.length) * 100) + '%';
-  }
-
-  /* Remember the name for next batch's suggestion (without the QA stamp). */
-  localStorage.setItem(LS.lastFolder, folderBase);
-  prefillFolderInput(); /* next suggestion ready for the following batch */
-
-  renderFailedList(failed);
-  resetDownloadUI();
-  const where = useFs ? `into “${folder}”` : `into your Downloads folder as “${folder}_…” files`;
-  let msg = `Saved ${saved} image${saved === 1 ? '' : 's'} ${where}.`;
-  if (unverified) msg += ` ${unverified} more were sent to the browser directly (couldn't verify).`;
-  if (failed.length) msg += ` ${failed.length} failed — see the list below.`;
-  toast(msg, failed.length > 0);
-}
-$('btnDownload').addEventListener('click', downloadBatch);
-
-/* ================= extension download path ================= */
-/* The Chrome extension saves through chrome.downloads straight into the
-   Downloads folder. Every file is renamed to <name>_001.ext,
-   <name>_002.ext, … so the batch stays together and sorts in page order. */
-async function downloadBatchExtension(kept, folder, folderBase){
-  state.downloading = true;
-  $('btnDownload').disabled = true;
-  $('progressWrap').style.display = 'block';
-  $('failedList').style.display = 'none';
-  $('failedList').innerHTML = '';
-  $('extOpenRow').hidden = true;
-
-  const safeName = folder.replace(/[\\/:*?"<>|]/g, '_').trim() || 'batch';
-  const digits = Math.max(3, String(kept.length).length);
-  const seqName = (k) => safeName + '_' + String(k + 1).padStart(digits, '0') + extFor(kept[k].url);
-  const failed = [];
-  const pending = new Map(); /* downloadId -> { url, name } */
-  const requested = new Map(); /* downloadId -> requested filename */
-  const onChanged = (delta) => {
-    if (!pending.has(delta.id)) return;
-    const rec = pending.get(delta.id);
-    const st = delta.state && delta.state.current;
-    if (st === 'complete'){ pending.delete(delta.id); }
-    else if (st === 'interrupted'){
-      pending.delete(delta.id);
-      failed.push({ url: rec.url, name: rec.name });
-    }
-  };
-  chrome.downloads.onChanged.addListener(onChanged);
-  try{
-    for (let k = 0; k < kept.length; k++){
-      const img = kept[k];
-      const fname = seqName(k);
-      $('progressLabel').textContent = `Saving ${k + 1} of ${kept.length} — ${fname}`;
-      try{
-        const id = await chrome.downloads.download({
-          url: img.url,
-          filename: fname,
-          conflictAction: 'uniquify',
-          saveAs: false
-        });
-        pending.set(id, { url: img.url, name: fname });
-        requested.set(id, fname);
-      }catch(e){
-        failed.push({ url: img.url, name: fname });
-      }
-      $('progressBar').style.width = Math.round(((k + 1) / kept.length) * 100) + '%';
-      await sleep(150);
-    }
-    /* Wait for the downloads to settle; anything still hanging after two
-       minutes (or reported interrupted) goes on the failed list. */
-    const deadline = Date.now() + 120000;
-    while (pending.size && Date.now() < deadline) await sleep(500);
-    for (const [id, rec] of [...pending]){
-      let interrupted = true;
-      try{
-        const found = await chrome.downloads.search({ id });
-        if (found && found[0] && found[0].state === 'complete') interrupted = false;
-      }catch(e){ /* treat as failed */ }
-      if (interrupted) failed.push({ url: rec.url, name: rec.name });
-      pending.delete(id);
-    }
-  }finally{
-    chrome.downloads.onChanged.removeListener(onChanged);
-  }
-
-  localStorage.setItem(LS.lastFolder, folderBase);
-  prefillFolderInput(); /* next suggestion ready for the following batch */
-
-  renderFailedList(failed);
-  resetDownloadUI();
-  const okCount = kept.length - failed.length;
-  /* Chrome silently ignores our requested filename when another extension
-     manages downloads (it registers an onDeterminingFilename listener), so
-     the batch can land with original website names. Detect that by comparing
-     each completed download's real filename against what we asked for. */
-  let renamedOk = true;
-  for (const [id, fname] of requested){
-    try{
-      const found = await chrome.downloads.search({ id });
-      const item = found && found[0];
-      if (!item || item.state !== 'complete') continue;
-      const landed = (item.filename || '').split(/[/\\]/).pop();
-      /* uniquify may append " (1)"; anything not starting with our base name
-         means Chrome didn't apply the requested name at all. */
-      if (landed && !landed.startsWith(safeName + '_')) renamedOk = false;
-    }catch(e){ /* can't verify this one; don't cry wolf */ }
-  }
-  /* Offer the Downloads-folder shortcut when at least one file landed.
-     (Only an extension can do this — web pages are forbidden from opening
-     the file manager.) */
-  if (okCount > 0){
-    $('extOpenRow').hidden = false;
-  }
-  const range = kept.length > 1
-    ? `“${seqName(0)}” … “${seqName(kept.length - 1)}”`
-    : `“${seqName(0)}”`;
-  if (okCount > 0 && !renamedOk){
-    toast(`Saved ${okCount} file${okCount === 1 ? '' : 's'}, but Chrome kept their original website names instead of ${range}. This happens when another extension manages your downloads — try disabling any download-manager extension and running the batch again.`, true);
-  }else{
-    toast(failed.length
-      ? `Saved ${okCount} of ${kept.length} as ${range} in your Downloads folder. ${failed.length} failed — see the list below.`
-      : `Saved ${kept.length} image${kept.length === 1 ? '' : 's'} as ${range} in your Downloads folder.`,
-      failed.length > 0);
-  }
-}
-
-/* ================= extension copy ================= */
-/* The extension renames files instead of making folders, and scrapes the
-   live tab instead of fetching a URL — rewrite the UI and help copy that
-   describe the website flow. Runs at boot when IS_EXTENSION. */
-function applyExtensionCopy(){
-  const saveCard = $('saveCard');
-  const h2 = saveCard.querySelector('h2');
-  if (h2) h2.textContent = '3 · Name the files';
-  const hint = saveCard.querySelector('.hint');
-  if (hint) hint.textContent = 'Each file is saved with the name you choose plus a sequential number, so the batch stays in order in your Downloads folder. The name is filled in for you from your last batch (bumping any number at the end) — keep it or type your own.';
-  const label = saveCard.querySelector('label[for="folderInput"]');
-  if (label) label.innerHTML = 'File name <span style="font-weight:400">(optional)</span>';
-  const help = document.querySelector('#helpOverlay .help-content');
-  if (help) help.innerHTML =
-    '<h3>What it does</h3>' +
-    '<p>ComicSaver reads the tab you clicked the toolbar button on, lists every image on it as thumbnails, lets you drop the ones you don\'t want, then saves the rest into your Downloads folder with sequential file names.</p>' +
-    '<h3>The three steps</h3>' +
-    '<ul>' +
-    '<li><strong>Scrape the tab.</strong> Click the ComicSaver toolbar button while viewing a page. ComicSaver reads the live page directly — no URL to paste, no CORS limits — and pulls out its images: <code>&lt;img&gt;</code> tags (including <code>srcset</code> and lazy-load attributes), <code>&lt;picture&gt;</code> sources, and — if enabled in Configuration — links that point at image files.</li>' +
-    '<li><strong>Choose images.</strong> Everything starts selected. Click a thumbnail or its checkbox to deselect it. <em>Select all</em> / <em>Select none</em> are there for big batches.</li>' +
-    '<li><strong>Name the files.</strong> The name is filled in for you from your last batch, incrementing any number at the end (e.g. <code>Chapter 3</code> → <code>Chapter 4</code>) — keep it or type your own. The first batch ever is called <code>batch-1</code>. Files are saved as <code>&lt;name&gt;_001.jpg</code>, <code>&lt;name&gt;_002.jpg</code>, … so the batch stays in page order.</li>' +
-    '</ul>' +
-    '<h3>Where the files go</h3>' +
-    '<ul>' +
-    '<li>Straight into your Downloads folder, renamed <code>&lt;name&gt;_001.jpg</code>, <code>&lt;name&gt;_002.jpg</code>, … in page order.</li>' +
-    '<li>If a file can\'t be downloaded (for example, the site blocks it), it lands in a failed list after the batch with a link so you can save it by hand.</li>' +
-    '</ul>' +
-    '<h3>Why some pages show no images</h3>' +
-    '<p>The extension reads the live tab directly, so the CORS limits that affect the website don\'t apply here. If a page shows no images, it genuinely has none in its markup — CSS background images aren\'t collected.</p>';
-}
-
-/* ================= extension boot ================= */
-function escapeHtml(s){
-  return String(s).replace(/[&<>"']/g, c =>
-    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-}
-/* In the extension the images were already scraped from the live tab by the
-   content script — no URL fetching or CORS involved. The payload waits in
-   chrome.storage.session, put there by the background worker. */
-function ingestExtension(payload){
-  const urls = [...(payload.images || [])];
-  if (localStorage.getItem(LS.linked) === '1') urls.push(...(payload.linkedImages || []));
-  const seen = new Set(), uniq = [];
-  for (const u of urls){ if (u && !seen.has(u)){ seen.add(u); uniq.push(u); } }
-  state.images = uniq.map((url, i) => ({ url, kept: true, id: i }));
-  state.baseUrl = payload.pageUrl || '';
-  $('selectCard').hidden = false;
-  $('saveCard').hidden = false;
-  $('selectGhost').hidden = true;
-  $('saveGhost').hidden = true;
-  renderGrid();
-  updateCount();
-  updateWillSaveTo();
-  toast(uniq.length
-    ? `Found ${uniq.length} image${uniq.length === 1 ? '' : 's'} — all selected.`
-    : 'No images found on that page.', !uniq.length);
-}
-/* ================= extension self-update check ================= */
-/* Unpacked extensions don't auto-update, so the app page checks a version
-   file on the (unlisted) ComicSaver site each time it opens. GitHub Pages
-   sends Access-Control-Allow-Origin: *, so no extra permission is needed. */
-const EXT_UPDATE_URL = 'https://max-levi.github.io/ComicSaver/ext-version.json';
-function cmpVersions(a, b){
-  const pa = String(a).split('.').map(x => parseInt(x, 10) || 0);
-  const pb = String(b).split('.').map(x => parseInt(x, 10) || 0);
-  for (let i = 0; i < Math.max(pa.length, pb.length); i++){
-    const d = (pa[i] || 0) - (pb[i] || 0);
-    if (d) return d > 0 ? 1 : -1;
-  }
-  return 0;
-}
-async function checkExtensionUpdate(){
-  let cur = '';
-  try{ cur = chrome.runtime.getManifest().version; }catch(e){ return; }
-  let info = null;
-  try{
-    const res = await fetch(EXT_UPDATE_URL, { cache: 'no-store' });
-    if (!res.ok) return;
-    info = await res.json();
-  }catch(e){ return; } /* offline or unreachable: stay silent */
-  const latest = info && info.version;
-  if (!latest || cmpVersions(latest, cur) <= 0) return;
-  if (localStorage.getItem('comicsaver-ext-update-dismissed') === latest) return;
-  $('extCurVer').textContent = cur;
-  $('extUpdateVer').textContent = latest;
-  const dlUrl = info.download ||
-    ('https://max-levi.github.io/ComicSaver/comicsaver-extension-' + latest + '.zip');
-  $('extUpdateDownload').onclick = () => window.open(dlUrl, '_blank', 'noopener');
-  $('updateDlLink').href = dlUrl;
-  $('updateDlLink').target = '_blank';
-  $('extUpdateBanner').hidden = false;
-}
-$('extUpdateHow').addEventListener('click', () => $('updateOverlay').classList.add('open'));
-$('btnUpdateOpenDl').addEventListener('click', () => {
-  try{ chrome.downloads.showDefaultFolder(); }
-  catch(e){ toast('Could not open the Downloads folder.', true); }
-});
-$('extUpdateDismiss').addEventListener('click', () => {
-  const v = $('extUpdateVer').textContent;
-  if (v) localStorage.setItem('comicsaver-ext-update-dismissed', v);
-  $('extUpdateBanner').hidden = true;
-});
-async function bootExtension(){
-  $('urlCard').hidden = true;
-  $('pastePanel').hidden = true;
-  $('selectGhost').hidden = true;
-  $('saveGhost').hidden = true;
-  $('extBanner').hidden = false;
-  let payload = null;
-  try{
-    payload = (await chrome.storage.session.get('comicsaver-payload'))['comicsaver-payload'] || null;
-  }catch(e){ payload = null; }
-  if (!payload || payload.error){
-    $('selectCard').hidden = false;
-    $('grid').innerHTML = '<div class="empty-note">' + EMPTY_ART +
-      escapeHtml((payload && payload.error) ||
-        'Nothing to show. Click the ComicSaver icon while viewing a page to scrape its images.') +
-      '</div>';
-    checkExtensionUpdate(); /* fire and forget: silent when offline */
-    return;
-  }
-  const src = $('extSource');
-  src.textContent = payload.pageTitle || payload.pageUrl || 'the page';
-  if (payload.pageUrl) src.href = payload.pageUrl;
-  ingestExtension(payload);
-  checkExtensionUpdate(); /* fire and forget: silent when offline */
-}
-
-/* ================= init ================= */
-applyTheme(localStorage.getItem(LS.theme) || 'dark');
-prefillFolderInput();
-if (IS_EXTENSION){
-  applyExtensionCopy();
-  /* Downloads-folder shortcut: chrome.downloads.showDefaultFolder() opens
-     the Downloads folder. */
-  $('btnOpenDownloadsFolder').addEventListener('click', () => {
-    try{ chrome.downloads.showDefaultFolder(); }
-    catch(e){ toast('Could not open the Downloads folder.', true); }
-  });
-  bootExtension();
-}
+})();
 </script>
 </body>
 </html>
